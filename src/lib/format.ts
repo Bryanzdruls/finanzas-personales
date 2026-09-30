@@ -20,6 +20,23 @@ export function parseAmount(input: string): number {
   return sign * Number(cleaned.replace(/\./g, "").replace(",", "."));
 }
 
+// Monto que manda el Atajo de iOS. Su formato depende de la región del iPhone
+// ("$45.000,00", "COP 45.000", "45,000.00", "US$12.99"): si el último separador tiene 1-2
+// dígitos después es el decimal; si no, todos son de miles.
+export function parseWalletAmount(input: unknown): number {
+  if (typeof input === "number") return input;
+  if (typeof input !== "string") return NaN;
+  const cleaned = input.replace(/[^\d.,]/g, "");
+  if (!/\d/.test(cleaned)) return NaN;
+  const lastSep = Math.max(cleaned.lastIndexOf("."), cleaned.lastIndexOf(","));
+  const decimals = lastSep >= 0 ? cleaned.length - lastSep - 1 : 0;
+  if (lastSep >= 0 && decimals >= 1 && decimals <= 2) {
+    const integer = cleaned.slice(0, lastSep).replace(/[.,]/g, "");
+    return Number(`${integer || "0"}.${cleaned.slice(lastSep + 1)}`);
+  }
+  return Number(cleaned.replace(/[.,]/g, ""));
+}
+
 // Número -> texto para el campo de monto ("1250000" -> "1.250.000").
 export function formatAmountInput(value: number | string, currency: Currency) {
   const n = Number(value);

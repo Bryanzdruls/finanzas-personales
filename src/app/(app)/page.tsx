@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AddButton } from "@/components/add-button";
 import { MonthPicker } from "@/components/month-picker";
+import { ReviewBanner } from "@/components/review-banner";
 import { cardClass, sectionTitleClass } from "@/components/ui";
 import { formatShortDate, parseMonth } from "@/lib/dates";
 import { formatMoney, type Currency } from "@/lib/format";
@@ -76,6 +77,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   return (
     <>
       <h1 className="mb-4 text-3xl font-bold">Inicio</h1>
+      <ReviewBanner />
       <MonthPicker month={month} basePath="/" />
 
       <section className="mt-4 grid gap-3">

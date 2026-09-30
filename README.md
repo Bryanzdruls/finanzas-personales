@@ -58,6 +58,8 @@ Como la app es personal, después ve a *Authentication → Sign In / Providers* 
 | `debts` | Deudas: acreedor, monto total, lo abonado antes de la app, tasa, cuotas, día de pago, estado |
 | `account_snapshots` | Saldo real reportado en una fecha (para inversiones) |
 | `merchant_rules` | Comercio → categoría/cuenta (autocategorizar Apple Pay) |
+| `payment_cards` | Tarjeta de Wallet → cuenta (se aprende al revisar pagos) |
+| `api_tokens` | Tokens del Atajo de iOS (solo se guarda su hash) |
 | `account_balances` | Vista: saldo actual por cuenta |
 | `monthly_summary` | Vista: ingresos, gastos, abonos y neto por mes y moneda |
 | `debt_balances` | Vista: abonado, pendiente y % de cada deuda |
@@ -65,9 +67,15 @@ Como la app es personal, después ve a *Authentication → Sign In / Providers* 
 
 Cada tabla tiene Row Level Security, así que cada usuario solo ve lo suyo.
 
+## Apple Pay
+Un Atajo de iOS (automatización *Transacción*) envía cada pago a `POST /api/apple-pay` con
+`Authorization: Bearer <token>` y un JSON `{ amount, merchant, card }`. La función
+`ingest_apple_pay` valida el token y crea el gasto marcado *por revisar*. Las instrucciones
+paso a paso están en la app, en **Más → Apple Pay**.
+
 ## Roadmap
 - [x] Fase 1: proyecto, PWA, esquema + RLS, login con Google
 - [x] Fase 2: CRUD de cuentas, categorías, movimientos y dashboard mensual
 - [x] Fase 3: deudas y abonos
-- [ ] Fase 4: Apple Pay vía Atajos (automatización "Transacción") + reglas por comercio
+- [x] Fase 4: Apple Pay vía Atajos (automatización "Transacción") + reglas por comercio
 - [ ] Fase 5: gráficos, COP/USD, exportar CSV

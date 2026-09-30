@@ -4,6 +4,13 @@ import { cardClass } from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "../actions";
 
+const menu = [
+  { href: "/mas/categorias", icon: "🏷️", label: "Categorías" },
+  { href: "/movimientos/revisar", icon: "📥", label: "Pagos por revisar" },
+  { href: "/mas/apple-pay", icon: "💳", label: "Apple Pay" },
+  { href: "/mas/reglas", icon: "🧠", label: "Reglas de clasificación" },
+];
+
 export default async function MasPage() {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
@@ -13,15 +20,17 @@ export default async function MasPage() {
       <PageHeader title="Más" />
 
       <ul className={`${cardClass} divide-y divide-border`}>
-        <li>
-          <Link href="/mas/categorias" className="flex items-center gap-3 p-4">
-            <span aria-hidden className="text-xl">
-              🏷️
-            </span>
-            <span className="flex-1 font-medium">Categorías</span>
-            <span className="text-muted">›</span>
-          </Link>
-        </li>
+        {menu.map((item) => (
+          <li key={item.href}>
+            <Link href={item.href} className="flex items-center gap-3 p-4">
+              <span aria-hidden className="text-xl">
+                {item.icon}
+              </span>
+              <span className="flex-1 font-medium">{item.label}</span>
+              <span className="text-muted">›</span>
+            </Link>
+          </li>
+        ))}
       </ul>
 
       <section className={`${cardClass} mt-6 divide-y divide-border`}>

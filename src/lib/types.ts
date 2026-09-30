@@ -64,6 +64,7 @@ export type Transaction = {
   debt_id: string | null;
   description: string | null;
   merchant: string | null;
+  card_name: string | null;
   needs_review: boolean;
 };
 

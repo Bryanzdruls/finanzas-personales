@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { learnFromReview } from "@/lib/apple-pay";
 import { syncDebtStatus } from "@/lib/debts";
 import { createClient } from "@/lib/supabase/server";
 import type { FormState } from "@/lib/types";
@@ -73,8 +74,15 @@ export async function saveTransaction(id: string | null, _prev: FormState, formD
   }
 
   // Si se edita un abono y se cambia de deuda, la deuda anterior también debe recalcularse.
-  const previousDebtId = id
-    ? (await supabase.from("transactions").select("debt_id").eq("id", id).single()).data?.debt_id
+  // Si es un pago de Apple Pay por revisar, al guardarlo se aprende de lo elegido.
+  const previous = id
+    ? (
+        await supabase
+          .from("transactions")
+          .select("debt_id, source, merchant, card_name, needs_review")
+          .eq("id", id)
+          .single()
+      ).data
     : null;
 
   const row = {
@@ -95,10 +103,35 @@ export async function saveTransaction(id: string | null, _prev: FormState, formD
     : await supabase.from("transactions").insert(row);
   if (error) return { error: dbErrorMessage(error) };
 
-  await syncDebtStatus(supabase, [row.debt_id, previousDebtId]);
+  await syncDebtStatus(supabase, [row.debt_id, previous?.debt_id]);
+
+  if (previous?.source === "apple_pay" && row.type === "expense") {
+    await learnFromReview(supabase, {
+      merchant: previous.merchant,
+      card_name: previous.card_name,
+      category_id: row.category_id,
+      account_id: row.account_id,
+    });
+  }
 
   revalidatePath("/", "layout");
+  if (previous?.needs_review) redirect("/movimientos/revisar");
   redirect(row.debt_id ? `/deudas/${row.debt_id}` : `/movimientos?mes=${t.occurred_on.slice(0, 7)}`);
+}
+
+// Confirma un pago de Apple Pay tal como llegó (desde la bandeja "Por revisar").
+export async function approveTransaction(id: string): Promise<FormState> {
+  const supabase = await createClient();
+  const { data: t, error } = await supabase
+    .from("transactions")
+    .update({ needs_review: false })
+    .eq("id", id)
+    .select("merchant, card_name, category_id, account_id")
+    .single();
+  if (error) return { error: dbErrorMessage(error) };
+
+  await learnFromReview(supabase, t);
+  revalidatePath("/", "layout");
 }
 
 export async function deleteTransaction(id: string): Promise<FormState> {

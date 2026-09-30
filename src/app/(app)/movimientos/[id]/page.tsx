@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { DeleteButton } from "@/components/delete-button";
 import { PageHeader } from "@/components/page-header";
+import { cardClass } from "@/components/ui";
 import { today } from "@/lib/dates";
 import { getAccounts, getCategories, getDebtOptions } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
@@ -14,7 +15,7 @@ export default async function EditarMovimientoPage({ params }: PageProps<"/movim
   const { data: transaction } = await supabase
     .from("transactions")
     .select(
-      "id, occurred_on, amount, type, account_id, to_account_id, category_id, debt_id, description, merchant, needs_review",
+      "id, occurred_on, amount, type, account_id, to_account_id, category_id, debt_id, description, merchant, card_name, needs_review",
     )
     .eq("id", id)
     .maybeSingle<Transaction>();
@@ -36,6 +37,13 @@ export default async function EditarMovimientoPage({ params }: PageProps<"/movim
             : `/movimientos?mes=${transaction.occurred_on.slice(0, 7)}`
         }
       />
+      {transaction.needs_review && (
+        <p className={`${cardClass} mb-5 p-4 text-sm`}>
+          Pago de Apple Pay{transaction.merchant ? ` en ${transaction.merchant}` : ""}
+          {transaction.card_name ? ` con ${transaction.card_name}` : ""}. Al guardar, la app recordará la
+          categoría para este comercio y la cuenta para esta tarjeta.
+        </p>
+      )}
       <TransactionForm
         action={saveTransaction.bind(null, id)}
         accounts={accounts}

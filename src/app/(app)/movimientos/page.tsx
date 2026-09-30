@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AddButton } from "@/components/add-button";
 import { MonthPicker } from "@/components/month-picker";
 import { PageHeader } from "@/components/page-header";
+import { ReviewBanner } from "@/components/review-banner";
 import { cardClass } from "@/components/ui";
 import { formatDay, parseMonth } from "@/lib/dates";
 import { formatMoney, type Currency } from "@/lib/format";
@@ -87,6 +88,7 @@ export default async function MovimientosPage({ searchParams }: PageProps<"/movi
   return (
     <>
       <PageHeader title="Movimientos" />
+      <ReviewBanner />
       <MonthPicker
         month={month}
         basePath="/movimientos"
