@@ -20,6 +20,24 @@ export async function saveAccount(id: string | null, _prev: FormState, formData:
   if (!parsed.success) return { error: firstError(parsed.error) };
 
   const supabase = await createClient();
+
+  // Cambiar la moneda reinterpretaría los montos ya guardados (2.000.000 COP -> US$2.000.000).
+  if (id) {
+    const [{ data: current }, movements, snapshots] = await Promise.all([
+      supabase.from("accounts").select("currency").eq("id", id).single(),
+      supabase
+        .from("transactions")
+        .select("id", { count: "exact", head: true })
+        .or(`account_id.eq.${id},to_account_id.eq.${id}`),
+      supabase.from("account_snapshots").select("id", { count: "exact", head: true }).eq("account_id", id),
+    ]);
+    if (current && current.currency !== parsed.data.currency && (movements.count || snapshots.count)) {
+      return {
+        error: `No se puede cambiar la moneda: la cuenta tiene ${movements.count ?? 0} movimiento(s) y ${snapshots.count ?? 0} valor(es) registrados en ${current.currency}. Elimínalos primero o crea una cuenta nueva.`,
+      };
+    }
+  }
+
   const { error } = id
     ? await supabase.from("accounts").update(parsed.data).eq("id", id)
     : await supabase.from("accounts").insert(parsed.data);
