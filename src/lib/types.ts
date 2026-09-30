@@ -67,5 +67,37 @@ export type Transaction = {
   needs_review: boolean;
 };
 
+export type DebtStatus = "active" | "paid" | "cancelled";
+
+export const debtStatusLabels: Record<DebtStatus, string> = {
+  active: "Activa",
+  paid: "Pagada",
+  cancelled: "Cancelada",
+};
+
+export type Debt = {
+  id: string;
+  creditor: string;
+  description: string | null;
+  category_id: string | null;
+  total_amount: string;
+  paid_before: string;
+  currency: Currency;
+  interest_rate: string | null;
+  start_date: string;
+  installments: number | null;
+  due_day: number | null;
+  status: DebtStatus;
+  notes: string | null;
+};
+
+// Deuda con lo abonado y lo pendiente (vista debt_balances).
+export type DebtOption = {
+  debt_id: string;
+  creditor: string;
+  currency: Currency;
+  remaining: string;
+};
+
 // Resultado de un Server Action que se muestra en el formulario.
 export type FormState = { error?: string } | undefined;

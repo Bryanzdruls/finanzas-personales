@@ -59,3 +59,16 @@ export function formatShortDate(isoDate: string) {
     new Date(Date.UTC(y, m - 1, d)),
   );
 }
+
+// Próxima fecha de pago (YYYY-MM-DD) para un día del mes, desde hoy. Si el mes es más corto
+// (p. ej. día 31 en febrero) se usa el último día del mes.
+export function nextDueDate(dueDay: number, from = today()) {
+  const [y, m, d] = from.split("-").map(Number);
+  const candidate = (year: number, month: number) => {
+    const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    return new Date(Date.UTC(year, month - 1, Math.min(dueDay, last)));
+  };
+  let date = candidate(y, m);
+  if (date.getUTCDate() < d) date = candidate(m === 12 ? y + 1 : y, m === 12 ? 1 : m + 1);
+  return date.toISOString().slice(0, 10);
+}

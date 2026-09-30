@@ -1,5 +1,20 @@
 import { createClient } from "./supabase/server";
-import type { Account, Category } from "./types";
+import type { Account, Category, DebtOption } from "./types";
+
+// Deudas a las que se puede abonar: las activas, más la del abono que se está editando.
+export async function getDebtOptions(includeId?: string | null) {
+  const supabase = await createClient();
+  let query = supabase
+    .from("debt_balances")
+    .select("debt_id, creditor, currency, remaining")
+    .order("creditor");
+  query = includeId
+    ? query.or(`status.eq.active,debt_id.eq.${includeId}`)
+    : query.eq("status", "active");
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return data as DebtOption[];
+}
 
 export async function getAccounts({ includeArchived = false } = {}) {
   const supabase = await createClient();

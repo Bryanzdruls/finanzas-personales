@@ -6,51 +6,80 @@ import { MoneyInput } from "@/components/money-input";
 import { SubmitButton } from "@/components/submit-button";
 import { inputClass, labelClass } from "@/components/ui";
 import { withFullNames } from "@/lib/categories";
-import type { Account, Category, FormState, Transaction } from "@/lib/types";
+import { formatMoney } from "@/lib/format";
+import type {
+  Account,
+  Category,
+  DebtOption,
+  FormState,
+  Transaction,
+  TransactionType,
+} from "@/lib/types";
 
-type EditableType = "expense" | "income" | "transfer";
-
-const typeOptions: { value: EditableType; label: string }[] = [
+const typeOptions: { value: TransactionType; label: string }[] = [
   { value: "expense", label: "Gasto" },
   { value: "income", label: "Ingreso" },
-  { value: "transfer", label: "Transferencia" },
+  { value: "transfer", label: "Transferir" },
+  { value: "debt_payment", label: "Abono" },
 ];
 
 export function TransactionForm({
   action,
   accounts,
   categories,
+  debts,
   initial,
   defaultType = "expense",
+  defaultDebtId,
   today,
 }: {
   action: (prev: FormState, formData: FormData) => Promise<FormState>;
   accounts: Account[];
   categories: Category[];
+  debts: DebtOption[];
   initial?: Transaction;
-  defaultType?: EditableType;
+  defaultType?: TransactionType;
+  defaultDebtId?: string;
   today: string;
 }) {
   const [state, formAction] = useActionState(action, undefined);
-  const [type, setType] = useState<EditableType>(
-    initial && initial.type !== "debt_payment" ? initial.type : defaultType,
+  const [type, setType] = useState<TransactionType>(initial?.type ?? defaultType);
+  const [debtId, setDebtId] = useState(initial?.debt_id ?? defaultDebtId ?? debts[0]?.debt_id ?? "");
+  const debt = debts.find((d) => d.debt_id === debtId);
+  const [accountId, setAccountId] = useState(
+    initial?.account_id ?? firstAccountIn(accounts, type === "debt_payment" ? debt?.currency : undefined),
   );
-  const [accountId, setAccountId] = useState(initial?.account_id ?? accounts[0]?.id ?? "");
   const currency = accounts.find((a) => a.id === accountId)?.currency ?? "COP";
   const visibleCategories = withFullNames(categories.filter((c) => c.kind === type));
+  // "Abono" solo aparece si hay deudas a las que abonar.
+  const options = typeOptions.filter((o) => o.value !== "debt_payment" || debts.length > 0);
+
+  function selectDebt(id: string) {
+    setDebtId(id);
+    const next = debts.find((d) => d.debt_id === id);
+    if (next && next.currency !== currency) setAccountId(firstAccountIn(accounts, next.currency));
+  }
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
       <input type="hidden" name="type" value={type} />
 
-      <div className="grid grid-cols-3 gap-1 rounded-xl bg-surface p-1" role="radiogroup">
-        {typeOptions.map((option) => (
+      <div
+        className={`grid gap-1 rounded-xl bg-surface p-1 ${options.length === 4 ? "grid-cols-4" : "grid-cols-3"}`}
+        role="radiogroup"
+      >
+        {options.map((option) => (
           <button
             key={option.value}
             type="button"
             role="radio"
             aria-checked={type === option.value}
-            onClick={() => setType(option.value)}
+            onClick={() => {
+              setType(option.value);
+              if (option.value === "debt_payment" && debt && debt.currency !== currency) {
+                setAccountId(firstAccountIn(accounts, debt.currency));
+              }
+            }}
             className={`rounded-lg py-2 text-sm font-medium ${
               type === option.value ? "bg-accent text-accent-foreground" : "text-muted"
             }`}
@@ -59,6 +88,32 @@ export function TransactionForm({
           </button>
         ))}
       </div>
+
+      {type === "debt_payment" && (
+        <div>
+          <label htmlFor="debt_id" className={labelClass}>
+            Deuda
+          </label>
+          <select
+            id="debt_id"
+            name="debt_id"
+            value={debtId}
+            onChange={(e) => selectDebt(e.target.value)}
+            className={inputClass}
+          >
+            {debts.map((d) => (
+              <option key={d.debt_id} value={d.debt_id}>
+                {d.creditor} ({d.currency})
+              </option>
+            ))}
+          </select>
+          {debt && (
+            <p className="mt-1 px-1 text-xs text-muted">
+              Pendiente: {formatMoney(debt.remaining, debt.currency)}
+            </p>
+          )}
+        </div>
+      )}
 
       <div>
         <label className={labelClass}>Monto</label>
@@ -73,7 +128,7 @@ export function TransactionForm({
 
       <div>
         <label htmlFor="account_id" className={labelClass}>
-          {type === "transfer" ? "Desde" : "Cuenta"}
+          {type === "transfer" ? "Desde" : type === "debt_payment" ? "Pagado desde" : "Cuenta"}
         </label>
         <select
           id="account_id"
@@ -114,7 +169,7 @@ export function TransactionForm({
               ))}
           </select>
         </div>
-      ) : (
+      ) : type === "debt_payment" ? null : (
         <fieldset>
           <legend className={labelClass}>Categoría</legend>
           <div className="flex flex-wrap gap-2">
@@ -168,4 +223,8 @@ export function TransactionForm({
       <SubmitButton>{initial ? "Guardar cambios" : "Registrar"}</SubmitButton>
     </form>
   );
+}
+
+function firstAccountIn(accounts: Account[], currency?: string) {
+  return (accounts.find((a) => !currency || a.currency === currency) ?? accounts[0])?.id ?? "";
 }

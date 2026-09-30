@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { syncDebtStatus } from "@/lib/debts";
 import { createClient } from "@/lib/supabase/server";
 import type { FormState } from "@/lib/types";
 import {
@@ -17,19 +18,23 @@ import {
 
 const schema = z
   .object({
-    type: z.enum(["expense", "income", "transfer"], "Tipo inválido."),
+    type: z.enum(["expense", "income", "transfer", "debt_payment"], "Tipo inválido."),
     amount: positiveMoney,
     occurred_on: isoDate,
     account_id: uuid,
     to_account_id: optionalUuid,
     category_id: optionalUuid,
+    debt_id: optionalUuid,
     description: optionalText,
   })
   .refine((t) => t.type !== "transfer" || t.to_account_id, {
     message: "Elige la cuenta destino.",
   })
-  .refine((t) => t.to_account_id !== t.account_id, {
+  .refine((t) => t.type !== "transfer" || t.to_account_id !== t.account_id, {
     message: "La cuenta destino debe ser distinta.",
+  })
+  .refine((t) => t.type !== "debt_payment" || t.debt_id, {
+    message: "Elige la deuda a la que abonas.",
   });
 
 export async function saveTransaction(id: string | null, _prev: FormState, formData: FormData) {
@@ -39,15 +44,38 @@ export async function saveTransaction(id: string | null, _prev: FormState, formD
   const t = parsed.data;
   const supabase = await createClient();
 
+  const { data: account } = await supabase
+    .from("accounts")
+    .select("currency")
+    .eq("id", t.account_id)
+    .single();
+
   if (t.type === "transfer") {
-    const { data: accounts } = await supabase
+    const { data: target } = await supabase
       .from("accounts")
-      .select("id, currency")
-      .in("id", [t.account_id, t.to_account_id!]);
-    if (new Set(accounts?.map((a) => a.currency)).size > 1) {
+      .select("currency")
+      .eq("id", t.to_account_id!)
+      .single();
+    if (account?.currency !== target?.currency) {
       return { error: "Por ahora las transferencias deben ser entre cuentas de la misma moneda." };
     }
   }
+
+  if (t.type === "debt_payment") {
+    const { data: debt } = await supabase
+      .from("debts")
+      .select("currency")
+      .eq("id", t.debt_id!)
+      .single();
+    if (account?.currency !== debt?.currency) {
+      return { error: `Esta deuda es en ${debt?.currency}: paga desde una cuenta en esa moneda.` };
+    }
+  }
+
+  // Si se edita un abono y se cambia de deuda, la deuda anterior también debe recalcularse.
+  const previousDebtId = id
+    ? (await supabase.from("transactions").select("debt_id").eq("id", id).single()).data?.debt_id
+    : null;
 
   const row = {
     type: t.type,
@@ -55,7 +83,8 @@ export async function saveTransaction(id: string | null, _prev: FormState, formD
     occurred_on: t.occurred_on,
     account_id: t.account_id,
     to_account_id: t.type === "transfer" ? t.to_account_id : null,
-    category_id: t.type === "transfer" ? null : t.category_id,
+    category_id: t.type === "expense" || t.type === "income" ? t.category_id : null,
+    debt_id: t.type === "debt_payment" ? t.debt_id : null,
     description: t.description,
     // Al guardarlo a mano queda revisado (relevante para lo que llegue de Apple Pay).
     needs_review: false,
@@ -66,15 +95,24 @@ export async function saveTransaction(id: string | null, _prev: FormState, formD
     : await supabase.from("transactions").insert(row);
   if (error) return { error: dbErrorMessage(error) };
 
+  await syncDebtStatus(supabase, [row.debt_id, previousDebtId]);
+
   revalidatePath("/", "layout");
-  redirect(`/movimientos?mes=${t.occurred_on.slice(0, 7)}`);
+  redirect(row.debt_id ? `/deudas/${row.debt_id}` : `/movimientos?mes=${t.occurred_on.slice(0, 7)}`);
 }
 
 export async function deleteTransaction(id: string): Promise<FormState> {
   const supabase = await createClient();
-  const { error } = await supabase.from("transactions").delete().eq("id", id);
+  const { data: deleted, error } = await supabase
+    .from("transactions")
+    .delete()
+    .eq("id", id)
+    .select("debt_id")
+    .maybeSingle();
   if (error) return { error: dbErrorMessage(error) };
 
+  await syncDebtStatus(supabase, [deleted?.debt_id]);
+
   revalidatePath("/", "layout");
-  redirect("/movimientos");
+  redirect(deleted?.debt_id ? `/deudas/${deleted.debt_id}` : "/movimientos");
 }

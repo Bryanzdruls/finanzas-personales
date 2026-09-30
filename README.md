@@ -9,7 +9,7 @@ Stack: Next.js 16 + TypeScript + Tailwind · Supabase (Postgres, Auth, RLS) · V
 ### 1. Supabase
 1. Crea un proyecto gratis en <https://supabase.com> (región: `South America (São Paulo)`).
 2. Aplica el esquema. Hay dos opciones:
-   - **Desde el dashboard:** en *SQL Editor*, pega y ejecuta `supabase/migrations/20260930000000_esquema_inicial.sql`.
+   - **Desde el dashboard:** en *SQL Editor*, pega y ejecuta, en orden, cada archivo de `supabase/migrations/`.
    - **Con la CLI:**
      ```bash
      npx supabase login
@@ -55,7 +55,7 @@ Como la app es personal, después ve a *Authentication → Sign In / Providers* 
 | `accounts` | Cuentas (banco, pensión, bróker, cripto, efectivo) con moneda COP/USD y saldo inicial |
 | `categories` | Categorías de gasto, ingreso y deuda (con subcategorías) |
 | `transactions` | Gastos, ingresos, transferencias y abonos a deudas |
-| `debts` | Deudas: acreedor, monto total, tasa, cuotas, estado |
+| `debts` | Deudas: acreedor, monto total, lo abonado antes de la app, tasa, cuotas, día de pago, estado |
 | `account_snapshots` | Saldo real reportado en una fecha (para inversiones) |
 | `merchant_rules` | Comercio → categoría/cuenta (autocategorizar Apple Pay) |
 | `account_balances` | Vista: saldo actual por cuenta |
@@ -67,7 +67,7 @@ Cada tabla tiene Row Level Security, así que cada usuario solo ve lo suyo.
 
 ## Roadmap
 - [x] Fase 1: proyecto, PWA, esquema + RLS, login con Google
-- [ ] Fase 2: CRUD de cuentas, categorías, movimientos y dashboard mensual
-- [ ] Fase 3: deudas y abonos
+- [x] Fase 2: CRUD de cuentas, categorías, movimientos y dashboard mensual
+- [x] Fase 3: deudas y abonos
 - [ ] Fase 4: Apple Pay vía Atajos (automatización "Transacción") + reglas por comercio
 - [ ] Fase 5: gráficos, COP/USD, exportar CSV
