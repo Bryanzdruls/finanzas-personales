@@ -16,9 +16,17 @@ Stack: Next.js 16 + TypeScript + Tailwind · Supabase (Postgres, Auth, RLS) · V
      npx supabase link --project-ref TU_PROJECT_REF
      npx supabase db push
      ```
-3. Cambia las plantillas de correo para que envíen **código** en vez de link. En *Authentication → Emails*, edita **Magic Link** y **Confirm signup** y pega el contenido de `supabase/templates/codigo.html` (usa `{{ .Token }}`).
-   > La app usa código de 6 dígitos porque en iPhone la app instalada y Safari no comparten sesión, así que un magic link abriría Safari y no la app.
-4. En *Authentication → URL Configuration*, pon como Site URL tu dominio de Vercel (o `http://localhost:3000` mientras desarrollas).
+3. Configura el login con Google (ver abajo).
+4. En *Authentication → URL Configuration*:
+   - **Site URL:** tu dominio de Vercel (o `http://localhost:3000` mientras desarrollas).
+   - **Redirect URLs:** `http://localhost:*/auth/callback` y, cuando despliegues, `https://TU-APP.vercel.app/auth/callback`.
+
+#### Login con Google
+1. En [Google Cloud Console](https://console.cloud.google.com/) crea un proyecto.
+2. Ve a *Google Auth Platform → Branding / Audience*. Elige tipo **External** y déjalo en modo **Testing**. En *Test users* agrega tu correo de Google: solo esas cuentas podrán entrar.
+3. Ve a *Clients → Create client → Web application*:
+   - **Authorized redirect URIs:** `https://TU-PROYECTO.supabase.co/auth/v1/callback`
+4. Copia el **Client ID** y el **Client secret**. Pégalos en Supabase en *Authentication → Sign In / Providers → Google* y actívalo.
 
 ### 2. Variables de entorno
 Copia `.env.example` a `.env.local` y rellena los valores de *Project Settings → API Keys*:
@@ -34,7 +42,7 @@ npm run dev
 ```
 
 ### 4. Primer ingreso y cierre del registro
-Entra con tu correo. Al crearse tu usuario se generan automáticamente tus cuentas (Bancolombia, Protección, Interactive Brokers, Wenia, Efectivo) y las categorías base.
+Entra con **Continuar con Google**. Al crearse tu usuario se generan automáticamente tus cuentas (Bancolombia, Protección, Interactive Brokers, Wenia, Efectivo) y las categorías base.
 Como la app es personal, después ve a *Authentication → Sign In / Providers* y desactiva **Allow new users to sign up**.
 
 ### 5. Desplegar e instalar en el iPhone
@@ -58,7 +66,7 @@ Como la app es personal, después ve a *Authentication → Sign In / Providers* 
 Cada tabla tiene Row Level Security, así que cada usuario solo ve lo suyo.
 
 ## Roadmap
-- [x] Fase 1: proyecto, PWA, esquema + RLS, login con código
+- [x] Fase 1: proyecto, PWA, esquema + RLS, login con Google
 - [ ] Fase 2: CRUD de cuentas, categorías, movimientos y dashboard mensual
 - [ ] Fase 3: deudas y abonos
 - [ ] Fase 4: Apple Pay vía Atajos (automatización "Transacción") + reglas por comercio
