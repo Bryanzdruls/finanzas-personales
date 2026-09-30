@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mis Finanzas</title>
+    <style>
+      body { font-family: system-ui, sans-serif; display: grid; place-items: center; min-height: 100vh; margin: 0; background: #f5f5f7; color: #1c1c1e; text-align: center; }
+      @media (prefers-color-scheme: dark) { body { background: #000; color: #f5f5f7; } }
+      button { margin-top: 1rem; padding: .75rem 1.5rem; border: 0; border-radius: .75rem; background: #0a7c66; color: #fff; font-size: 1rem; }
+    </style>
+  </head>
+  <body>
+    <!-- Solo se ve si la app no logra cargar la versión en línea (sin conexión). -->
+    <main>
+      <p style="font-size:3rem;margin:0">$</p>
+      <h1>Sin conexión</h1>
+      <p>Mis Finanzas necesita internet para cargar tus datos.</p>
+      <button onclick="location.reload()">Reintentar</button>
+    </main>
+  </body>
+</html>

@@ -2,7 +2,36 @@
 
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import { isNativeAndroid } from "@/lib/native";
 import { createClient } from "@/lib/supabase/client";
+
+// En la app Android, Google bloquea el login dentro del WebView (disallowed_useragent): se usa
+// el selector de cuentas nativo y el ID token se canjea en Supabase. El nonce evita que un token
+// interceptado se reutilice: Google recibe su hash y Supabase verifica el original.
+async function signInNative() {
+  const webClientId = process.env.NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+  if (!webClientId) throw new Error("Falta configurar NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID.");
+
+  const { SocialLogin } = await import("@capgo/capacitor-social-login");
+  const rawNonce = crypto.randomUUID();
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rawNonce));
+  const hashedNonce = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+
+  await SocialLogin.initialize({ google: { webClientId } });
+  const login = await SocialLogin.login({
+    provider: "google",
+    options: { scopes: ["email", "profile"], nonce: hashedNonce },
+  });
+  const idToken = "idToken" in login.result ? login.result.idToken : null;
+  if (!idToken) throw new Error("Google no devolvió un token.");
+
+  const { error } = await createClient().auth.signInWithIdToken({
+    provider: "google",
+    token: idToken,
+    nonce: rawNonce,
+  });
+  if (error) throw error;
+}
 
 export default function LoginPage() {
   return (
@@ -29,6 +58,18 @@ function GoogleSignIn() {
   async function signIn() {
     setLoading(true);
     setError(null);
+
+    if (isNativeAndroid()) {
+      try {
+        await signInNative();
+        window.location.replace("/");
+      } catch (e) {
+        setLoading(false);
+        setError(e instanceof Error ? e.message : "No se pudo iniciar sesión con Google.");
+      }
+      return;
+    }
+
     const { error } = await createClient().auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback` },

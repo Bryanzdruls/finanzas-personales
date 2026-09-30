@@ -27,7 +27,7 @@ export async function createToken(_prev: TokenState, formData: FormData): Promis
   });
   if (error) return { error: dbErrorMessage(error) };
 
-  revalidatePath("/mas/apple-pay");
+  revalidatePath("/mas/pagos-automaticos");
   return { token };
 }
 
@@ -36,5 +36,5 @@ export async function revokeToken(id: string): Promise<FormState> {
   const { error } = await supabase.from("api_tokens").delete().eq("id", id);
   if (error) return { error: dbErrorMessage(error) };
 
-  revalidatePath("/mas/apple-pay");
+  revalidatePath("/mas/pagos-automaticos");
 }
