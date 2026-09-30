@@ -1,26 +1,46 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { TransactionType } from "./types";
+
+// Orígenes automáticos de los que se aprende al revisar.
+export const AUTOMATIC_SOURCES = ["apple_pay", "google_pay", "bancolombia"];
 
 export function normalizeKey(value: string) {
   return value.trim().toLowerCase();
 }
 
-// Al confirmar un pago de Apple Pay se aprende: comercio -> categoría y tarjeta -> cuenta,
-// para que el próximo pago igual llegue ya clasificado.
+// Al confirmar un movimiento automático se aprende, para que el próximo igual llegue clasificado:
+// - comercio/contraparte -> categoría (gastos e ingresos)
+// - contraparte -> transferencia a una cuenta propia (p. ej. "cuenta *123" -> Nu)
+// - tarjeta o cuenta del banco -> cuenta de la app
 export async function learnFromReview(
   supabase: SupabaseClient,
-  t: { merchant: string | null; card_name: string | null; category_id: string | null; account_id: string },
+  t: {
+    type: TransactionType;
+    merchant: string | null;
+    card_name: string | null;
+    category_id: string | null;
+    account_id: string;
+    to_account_id: string | null;
+  },
 ) {
-  if (t.merchant && t.category_id) {
+  if (t.merchant && (t.category_id || (t.type === "transfer" && t.to_account_id))) {
     const merchant = normalizeKey(t.merchant);
-    const { data: rules } = await supabase.from("merchant_rules").select("pattern, category_id");
-    // Misma lógica que ingest_apple_pay: gana el patrón más largo contenido en el comercio.
+    const { data: rules } = await supabase
+      .from("merchant_rules")
+      .select("pattern, category_id, to_account_id");
+    // Misma lógica que la base: gana el patrón más largo contenido en el comercio.
     const best = (rules ?? [])
       .filter((r) => merchant.includes(r.pattern))
       .sort((a, b) => b.pattern.length - a.pattern.length)[0];
-    if (best?.category_id !== t.category_id) {
+
+    const rule =
+      t.type === "transfer"
+        ? { category_id: null, to_account_id: t.to_account_id }
+        : { category_id: t.category_id, to_account_id: null };
+    if (best?.category_id !== rule.category_id || best?.to_account_id !== rule.to_account_id) {
       await supabase
         .from("merchant_rules")
-        .upsert({ pattern: merchant, category_id: t.category_id }, { onConflict: "user_id,pattern" });
+        .upsert({ pattern: merchant, ...rule }, { onConflict: "user_id,pattern" });
     }
   }
 

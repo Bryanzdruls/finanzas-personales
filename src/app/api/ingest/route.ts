@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
+import { ENABLED_KINDS, parseBancolombiaMessage } from "@/lib/bancolombia";
 import { formatMoney, parseWalletAmount } from "@/lib/format";
 import { supabaseKey, supabaseUrl } from "@/lib/supabase/env";
 import { parseGoogleWalletNotification, type ParsedPayment } from "@/lib/wallet-notification";
@@ -17,6 +18,8 @@ export async function POST(request: NextRequest) {
   const body = await readBody(request);
   const token = bearerToken(request) ?? stringField(body.token);
   if (!token) return reply(401, "Falta el token. Revisa el encabezado Authorization.");
+
+  if (body.source === "bancolombia") return ingestBancolombia(token, body);
 
   const source = body.source === "google_pay" ? "google_pay" : "apple_pay";
   const payment = source === "google_pay" ? fromGoogleWallet(body) : fromFields(body);
@@ -45,6 +48,42 @@ export async function POST(request: NextRequest) {
 
   const where = payment.merchant ? ` en ${payment.merchant}` : "";
   return reply(200, `Registrado ${formatMoney(payment.amount, "COP")}${where}`);
+}
+
+// SMS (Atajo "Mensaje") o correo (Gmail + Apps Script) de alertas de Bancolombia:
+//   { "source": "bancolombia", "channel": "sms" | "email", "text": "Bancolombia: Transferiste ..." }
+async function ingestBancolombia(token: string, body: Record<string, unknown>) {
+  const text = typeof body.text === "string" ? body.text.slice(0, 4000) : "";
+  const movement = parseBancolombiaMessage(text);
+  if (!movement || movement.kind === "unknown") {
+    console.warn("ingest: mensaje de Bancolombia no reconocido", body.channel, text.slice(0, 500));
+    return reply(422, "No se reconoció el mensaje de Bancolombia.");
+  }
+  if (!ENABLED_KINDS.includes(movement.kind)) {
+    return reply(200, `Ignorado (${movement.description.toLowerCase()})`);
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+  const { data, error } = await supabase.rpc("ingest_bank_movement", {
+    p_token: token,
+    p_type: movement.kind === "income" ? "income" : "expense",
+    p_amount: movement.amount,
+    p_counterparty: movement.counterparty,
+    p_description: movement.description,
+    p_card_key: movement.cardKey,
+    p_occurred_on: movement.date,
+  });
+
+  if (error) {
+    if (error.code === "28000") return reply(401, "Token inválido o revocado.");
+    if (error.code === "22023") return reply(400, "Monto inválido.");
+    console.error("ingest_bank_movement", error);
+    return reply(500, "No se pudo registrar el movimiento.");
+  }
+
+  const amount = formatMoney(movement.amount, "COP");
+  if ((data as { duplicate?: boolean })?.duplicate) return reply(200, `Ya estaba registrado: ${amount}`);
+  return reply(200, `Registrado ${amount} · ${movement.description}`);
 }
 
 function fromFields(body: Record<string, unknown>): ParsedPayment | null {

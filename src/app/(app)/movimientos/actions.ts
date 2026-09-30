@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { learnFromReview } from "@/lib/apple-pay";
+import { AUTOMATIC_SOURCES, learnFromReview } from "@/lib/apple-pay";
 import { syncDebtStatus } from "@/lib/debts";
 import { createClient } from "@/lib/supabase/server";
 import type { FormState } from "@/lib/types";
@@ -105,12 +105,14 @@ export async function saveTransaction(id: string | null, _prev: FormState, formD
 
   await syncDebtStatus(supabase, [row.debt_id, previous?.debt_id]);
 
-  if (previous?.source === "apple_pay" && row.type === "expense") {
+  if (previous && AUTOMATIC_SOURCES.includes(previous.source) && row.type !== "debt_payment") {
     await learnFromReview(supabase, {
+      type: row.type,
       merchant: previous.merchant,
       card_name: previous.card_name,
       category_id: row.category_id,
       account_id: row.account_id,
+      to_account_id: row.to_account_id,
     });
   }
 
@@ -126,11 +128,11 @@ export async function approveTransaction(id: string): Promise<FormState> {
     .from("transactions")
     .update({ needs_review: false })
     .eq("id", id)
-    .select("merchant, card_name, category_id, account_id")
+    .select("type, merchant, card_name, category_id, account_id, to_account_id")
     .single();
   if (error) return { error: dbErrorMessage(error) };
 
-  await learnFromReview(supabase, t);
+  if (t.type !== "debt_payment") await learnFromReview(supabase, t);
   revalidatePath("/", "layout");
 }
 

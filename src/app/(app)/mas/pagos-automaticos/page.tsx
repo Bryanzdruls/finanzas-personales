@@ -8,6 +8,7 @@ import { getAccounts } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 import { revokeToken } from "./actions";
 import { AndroidCapture } from "./android-capture";
+import { BancolombiaSetup } from "./bancolombia-setup";
 import { TokenForm } from "./token-form";
 
 type Token = {
@@ -36,12 +37,13 @@ export default async function PagosAutomaticosPage() {
   const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
   const protocol = headerList.get("x-forwarded-proto") ?? "https";
   const endpoint = `${protocol}://${host}/api/apple-pay`;
+  const ingestEndpoint = `${protocol}://${host}/api/ingest`;
 
   return (
     <>
       <PageHeader title="Pagos automáticos" backHref="/mas" />
       <p className="px-1 text-sm text-muted">
-        Cada pago con Apple Pay (iPhone) o Google Wallet (Android) se registra solo y queda en{" "}
+        Los pagos con Apple Pay o Google Wallet y los movimientos de Bancolombia se registran solos y quedan en{" "}
         <strong>Por revisar</strong> para que confirmes categoría y cuenta.
       </p>
 
@@ -131,6 +133,8 @@ export default async function PagosAutomaticosPage() {
             <p className="mt-2 px-1 text-xs text-muted">
               Los nombres exactos de los campos pueden variar según el idioma de tu iPhone.
             </p>
+
+            <BancolombiaSetup endpoint={ingestEndpoint} />
           </>
         }
       />

@@ -73,7 +73,14 @@ export type Transaction = {
   description: string | null;
   merchant: string | null;
   card_name: string | null;
+  source: string;
   needs_review: boolean;
+};
+
+export const sourceLabels: Record<string, string> = {
+  apple_pay: "Apple Pay",
+  google_pay: "Google Wallet",
+  bancolombia: "Bancolombia",
 };
 
 export type DebtStatus = "active" | "paid" | "cancelled";

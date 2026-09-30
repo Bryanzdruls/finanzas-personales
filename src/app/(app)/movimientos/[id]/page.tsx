@@ -5,7 +5,7 @@ import { cardClass } from "@/components/ui";
 import { today } from "@/lib/dates";
 import { getAccounts, getCategories, getDebtOptions } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
-import type { Transaction } from "@/lib/types";
+import { sourceLabels, type Transaction } from "@/lib/types";
 import { deleteTransaction, saveTransaction } from "../actions";
 import { TransactionForm } from "../transaction-form";
 
@@ -15,7 +15,7 @@ export default async function EditarMovimientoPage({ params }: PageProps<"/movim
   const { data: transaction } = await supabase
     .from("transactions")
     .select(
-      "id, occurred_on, amount, type, account_id, to_account_id, category_id, debt_id, description, merchant, card_name, needs_review",
+      "id, occurred_on, amount, type, account_id, to_account_id, category_id, debt_id, description, merchant, card_name, source, needs_review",
     )
     .eq("id", id)
     .maybeSingle<Transaction>();
@@ -39,9 +39,10 @@ export default async function EditarMovimientoPage({ params }: PageProps<"/movim
       />
       {transaction.needs_review && (
         <p className={`${cardClass} mb-5 p-4 text-sm`}>
-          Pago de Apple Pay{transaction.merchant ? ` en ${transaction.merchant}` : ""}
-          {transaction.card_name ? ` con ${transaction.card_name}` : ""}. Al guardar, la app recordará la
-          categoría para este comercio y la cuenta para esta tarjeta.
+          Llegó de {sourceLabels[transaction.source] ?? "un registro automático"}
+          {transaction.merchant ? ` · ${transaction.merchant}` : ""}
+          {transaction.card_name ? ` · ${transaction.card_name}` : ""}. Al guardar, la app recordará la
+          categoría (o la cuenta destino, si lo cambias a transferencia) para la próxima vez.
         </p>
       )}
       <TransactionForm
