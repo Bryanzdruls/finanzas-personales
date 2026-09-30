@@ -13,6 +13,12 @@ export const accountTypeLabels: Record<AccountType, string> = {
   other: "Otro",
 };
 
+// Cuentas cuyo valor cambia por rendimientos: se actualizan escribiendo el valor actual.
+const investmentTypes: AccountType[] = ["broker", "pension", "crypto"];
+export function isInvestment(type: AccountType) {
+  return investmentTypes.includes(type);
+}
+
 export const categoryKindLabels: Record<CategoryKind, string> = {
   expense: "Gastos",
   income: "Ingresos",

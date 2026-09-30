@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/page-header";
 import { cardClass, sectionTitleClass } from "@/components/ui";
 import { formatMoney, type Currency } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
-import { accountTypeLabels, type AccountType } from "@/lib/types";
+import { accountTypeLabels, isInvestment, type AccountType } from "@/lib/types";
 
 type Balance = {
   account_id: string;
@@ -47,7 +47,8 @@ export default async function CuentasPage() {
         ))}
       </div>
 
-      <AccountList title="Activas" accounts={active} />
+      <AccountList title="Disponible" accounts={active.filter((a) => !isInvestment(a.type))} />
+      <AccountList title="Inversiones" accounts={active.filter((a) => isInvestment(a.type))} />
       {archived.length > 0 && <AccountList title="Archivadas" accounts={archived} />}
 
       <AddButton href="/cuentas/nueva" label="Nueva cuenta" />
@@ -56,6 +57,7 @@ export default async function CuentasPage() {
 }
 
 function AccountList({ title, accounts }: { title: string; accounts: Balance[] }) {
+  if (accounts.length === 0) return null;
   return (
     <>
       <h2 className={sectionTitleClass}>{title}</h2>

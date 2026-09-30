@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DeleteButton } from "@/components/delete-button";
 import { PageHeader } from "@/components/page-header";
@@ -5,7 +6,7 @@ import { cardClass, sectionTitleClass } from "@/components/ui";
 import { formatDay, today } from "@/lib/dates";
 import { formatMoney } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
-import type { Account } from "@/lib/types";
+import { isInvestment, type Account } from "@/lib/types";
 import { deleteAccount, deleteSnapshot, saveAccount, saveSnapshot } from "../actions";
 import { AccountForm } from "../account-form";
 import { SnapshotForm } from "../snapshot-form";
@@ -19,7 +20,11 @@ export default async function CuentaPage({ params }: PageProps<"/cuentas/[id]">)
       .select("id, name, type, currency, initial_balance, color, archived")
       .eq("id", id)
       .maybeSingle<Account>(),
-    supabase.from("account_balances").select("balance").eq("account_id", id).maybeSingle(),
+    supabase
+      .from("account_balances")
+      .select("balance, last_snapshot_on")
+      .eq("account_id", id)
+      .maybeSingle(),
     supabase
       .from("account_snapshots")
       .select("id, as_of, balance")
@@ -29,36 +34,50 @@ export default async function CuentaPage({ params }: PageProps<"/cuentas/[id]">)
   ]);
   if (!account) notFound();
 
-  const isInvestment = ["pension", "broker", "crypto"].includes(account.type);
+  const investment = isInvestment(account.type);
 
   return (
     <>
       <PageHeader title={account.name} backHref="/cuentas" />
 
       <div className={`${cardClass} p-5`}>
-        <p className="text-sm text-muted">Saldo actual</p>
+        <p className="text-sm text-muted">{investment ? "Valor actual" : "Saldo actual"}</p>
         <p className="mt-1 text-3xl font-semibold tabular-nums">
           {formatMoney(balance?.balance ?? 0, account.currency)}
         </p>
+        {balance?.last_snapshot_on && (
+          <p className="mt-1 text-xs text-muted">
+            Actualizado el {formatDay(balance.last_snapshot_on)}
+          </p>
+        )}
+        {!investment && (
+          <Link
+            href={`/movimientos?cuenta=${id}`}
+            className="mt-3 inline-block text-sm text-accent"
+          >
+            Ver movimientos ›
+          </Link>
+        )}
       </div>
 
-      <h2 className={sectionTitleClass}>Actualizar saldo real</h2>
+      <h2 className={sectionTitleClass}>{investment ? "Actualizar valor" : "Ajustar saldo real"}</h2>
       <div className={`${cardClass} p-4`}>
         <p className="mb-4 text-sm text-muted">
-          {isInvestment
-            ? "Escribe el saldo que muestra la plataforma hoy. Así se reflejan rendimientos y valorizaciones."
+          {investment
+            ? "Escribe el valor que muestra la plataforma hoy. Así tu patrimonio refleja lo que realmente tienes."
             : "Úsalo si el saldo de la app no cuadra con el del banco."}
         </p>
         <SnapshotForm
-          action={saveSnapshot.bind(null, id)}
+          action={saveSnapshot.bind(null, id, `/cuentas/${id}`)}
           currency={account.currency}
           today={today()}
+          label={investment ? "Valor actual" : "Saldo real"}
         />
       </div>
 
       {snapshots && snapshots.length > 0 && (
         <>
-          <h2 className={sectionTitleClass}>Historial de saldos</h2>
+          <h2 className={sectionTitleClass}>Historial</h2>
           <ul className={`${cardClass} divide-y divide-border`}>
             {snapshots.map((s) => (
               <li key={s.id} className="flex items-center justify-between gap-3 p-4">
@@ -69,8 +88,8 @@ export default async function CuentaPage({ params }: PageProps<"/cuentas/[id]">)
                 <DeleteButton
                   compact
                   action={deleteSnapshot.bind(null, id, s.id)}
-                  confirmMessage="¿Eliminar este saldo del historial?"
-                  label="Eliminar saldo"
+                  confirmMessage="¿Eliminar este valor del historial?"
+                  label="Eliminar valor"
                 />
               </li>
             ))}

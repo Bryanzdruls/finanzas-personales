@@ -49,7 +49,12 @@ const snapshotSchema = z.object({
 
 // Guarda el saldo real reportado (p. ej. el que muestra IBKR hoy). Desde esa fecha el saldo
 // de la cuenta parte de este valor en vez del saldo inicial.
-export async function saveSnapshot(accountId: string, _prev: FormState, formData: FormData) {
+export async function saveSnapshot(
+  accountId: string,
+  returnTo: string,
+  _prev: FormState,
+  formData: FormData,
+) {
   const parsed = snapshotSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: firstError(parsed.error) };
 
@@ -60,7 +65,7 @@ export async function saveSnapshot(accountId: string, _prev: FormState, formData
   if (error) return { error: dbErrorMessage(error) };
 
   revalidatePath("/", "layout");
-  redirect(`/cuentas/${accountId}`);
+  redirect(/^\/(?!\/)/.test(returnTo) ? returnTo : `/cuentas/${accountId}`);
 }
 
 export async function deleteSnapshot(accountId: string, snapshotId: string): Promise<FormState> {

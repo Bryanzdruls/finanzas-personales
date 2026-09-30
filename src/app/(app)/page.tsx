@@ -2,10 +2,10 @@ import Link from "next/link";
 import { AddButton } from "@/components/add-button";
 import { MonthPicker } from "@/components/month-picker";
 import { cardClass, sectionTitleClass } from "@/components/ui";
-import { parseMonth } from "@/lib/dates";
+import { formatShortDate, parseMonth } from "@/lib/dates";
 import { formatMoney, type Currency } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
-import { accountTypeLabels, type AccountType } from "@/lib/types";
+import { accountTypeLabels, isInvestment, type AccountType } from "@/lib/types";
 
 type Summary = {
   currency: Currency;
@@ -14,6 +14,17 @@ type Summary = {
   debt_payments: string;
   net: string;
 };
+
+type Balance = {
+  account_id: string;
+  name: string;
+  type: AccountType;
+  currency: Currency;
+  balance: string;
+  last_snapshot_on: string | null;
+};
+
+const sum = (accounts: Balance[]) => accounts.reduce((total, a) => total + Number(a.balance), 0);
 
 type Expense = {
   amount: string;
@@ -44,15 +55,19 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     supabase.from("net_worth").select("currency, assets, liabilities, net_worth").order("currency"),
     supabase
       .from("account_balances")
-      .select("account_id, name, type, currency, balance")
+      .select("account_id, name, type, currency, balance, last_snapshot_on")
       .eq("archived", false)
-      .order("name"),
+      .order("name")
+      .returns<Balance[]>(),
   ]);
 
   if (summary.error) throw new Error(summary.error.message);
   if (expenses.error) throw new Error(expenses.error.message);
   if (netWorth.error) throw new Error(netWorth.error.message);
   if (balances.error) throw new Error(balances.error.message);
+
+  const investments = balances.data.filter((a) => isInvestment(a.type));
+  const liquid = balances.data.filter((a) => !isInvestment(a.type));
 
   const summaries: Summary[] = summary.data.length
     ? summary.data
@@ -85,34 +100,66 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
 
       <h2 className={sectionTitleClass}>Patrimonio neto</h2>
       <div className="grid gap-3">
-        {netWorth.data.map((row) => (
-          <div key={row.currency} className={`${cardClass} p-4`}>
-            <div className="flex items-baseline justify-between">
-              <span className="text-sm text-muted">{row.currency}</span>
-              <span className="text-xl font-semibold tabular-nums">
-                {formatMoney(row.net_worth, row.currency as Currency)}
-              </span>
+        {netWorth.data.map((row) => {
+          const currency = row.currency as Currency;
+          const invested = sum(investments.filter((a) => a.currency === currency));
+          const available = Number(row.assets) - invested;
+          return (
+            <div key={currency} className={`${cardClass} p-4`}>
+              <div className="flex items-baseline justify-between">
+                <span className="text-sm text-muted">{currency}</span>
+                <span className="text-xl font-semibold tabular-nums">
+                  {formatMoney(row.net_worth, currency)}
+                </span>
+              </div>
+              <dl className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                <Stat label="Disponible" value={formatMoney(available, currency)} />
+                <Stat label="Invertido" value={formatMoney(invested, currency)} />
+                <Stat
+                  label="Deudas"
+                  value={formatMoney(row.liabilities, currency)}
+                  className={Number(row.liabilities) > 0 ? "text-negative" : ""}
+                />
+              </dl>
             </div>
-            <div className="mt-2 flex justify-between text-xs text-muted tabular-nums">
-              <span>Activos {formatMoney(row.assets, row.currency as Currency)}</span>
-              <span>Deudas {formatMoney(row.liabilities, row.currency as Currency)}</span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
+
+      {investments.length > 0 && (
+        <>
+          <h2 className={sectionTitleClass}>Inversiones</h2>
+          <ul className={`${cardClass} divide-y divide-border`}>
+            {investments.map((a) => (
+              <li key={a.account_id} className="flex items-center gap-3 p-4">
+                <Link href={`/cuentas/${a.account_id}`} className="min-w-0 flex-1">
+                  <p className="truncate font-medium">{a.name}</p>
+                  <p className="text-xs text-muted">
+                    {a.last_snapshot_on ? `Actualizado ${formatShortDate(a.last_snapshot_on)}` : "Sin valor registrado"}
+                  </p>
+                </Link>
+                <div className="text-right">
+                  <p className="font-medium tabular-nums">{formatMoney(a.balance, a.currency)}</p>
+                  <Link href={`/cuentas/${a.account_id}/actualizar`} className="text-xs text-accent">
+                    Actualizar
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
 
       <h2 className={sectionTitleClass}>Cuentas</h2>
       <ul className={`${cardClass} divide-y divide-border`}>
-        {balances.data.map((account) => (
+        {liquid.map((account) => (
           <li key={account.account_id}>
             <Link href={`/cuentas/${account.account_id}`} className="flex items-center justify-between p-4">
               <div>
                 <p className="font-medium">{account.name}</p>
-                <p className="text-sm text-muted">{accountTypeLabels[account.type as AccountType]}</p>
+                <p className="text-sm text-muted">{accountTypeLabels[account.type]}</p>
               </div>
-              <p className="font-medium tabular-nums">
-                {formatMoney(account.balance, account.currency as Currency)}
-              </p>
+              <p className="font-medium tabular-nums">{formatMoney(account.balance, account.currency)}</p>
             </Link>
           </li>
         ))}

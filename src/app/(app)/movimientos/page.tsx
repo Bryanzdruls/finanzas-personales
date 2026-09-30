@@ -22,6 +22,8 @@ type Row = {
   debt: { creditor: string } | null;
 };
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const sign: Record<TransactionType, string> = {
   income: "+",
   expense: "−",
@@ -51,9 +53,12 @@ function icon(t: Row) {
 }
 
 export default async function MovimientosPage({ searchParams }: PageProps<"/movimientos">) {
-  const month = parseMonth((await searchParams).mes);
+  const { mes, cuenta } = await searchParams;
+  const month = parseMonth(mes);
+  const accountId = typeof cuenta === "string" && UUID.test(cuenta) ? cuenta : null;
   const supabase = await createClient();
-  const { data, error } = await supabase
+
+  let query = supabase
     .from("transactions")
     .select(
       `id, occurred_on, amount, type, description, merchant, needs_review,
@@ -63,10 +68,18 @@ export default async function MovimientosPage({ searchParams }: PageProps<"/movi
        debt:debts(creditor)`,
     )
     .gte("occurred_on", month.start)
-    .lt("occurred_on", month.end)
-    .order("occurred_on", { ascending: false })
-    .order("created_at", { ascending: false })
-    .returns<Row[]>();
+    .lt("occurred_on", month.end);
+  if (accountId) query = query.or(`account_id.eq.${accountId},to_account_id.eq.${accountId}`);
+
+  const [{ data, error }, { data: account }] = await Promise.all([
+    query
+      .order("occurred_on", { ascending: false })
+      .order("created_at", { ascending: false })
+      .returns<Row[]>(),
+    accountId
+      ? supabase.from("accounts").select("name").eq("id", accountId).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
   if (error) throw new Error(error.message);
 
   const days = Map.groupBy(data, (t) => t.occurred_on);
@@ -74,7 +87,20 @@ export default async function MovimientosPage({ searchParams }: PageProps<"/movi
   return (
     <>
       <PageHeader title="Movimientos" />
-      <MonthPicker month={month} basePath="/movimientos" />
+      <MonthPicker
+        month={month}
+        basePath="/movimientos"
+        params={accountId ? { cuenta: accountId } : {}}
+      />
+
+      {account && (
+        <Link
+          href={`/movimientos?mes=${month.key}`}
+          className="mt-4 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1 text-sm text-accent-foreground"
+        >
+          Solo {account.name} <span aria-label="Quitar filtro">×</span>
+        </Link>
+      )}
 
       {data.length === 0 && (
         <p className={`${cardClass} mt-6 p-6 text-center text-muted`}>
