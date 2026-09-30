@@ -5,7 +5,7 @@ import { transactionTypeLabels, type TransactionType } from "@/lib/types";
 
 type Row = {
   occurred_on: string;
-  amount: string;
+  amount: number | string;
   type: TransactionType;
   description: string | null;
   merchant: string | null;
@@ -55,7 +55,8 @@ export async function GET(request: NextRequest) {
     [
       r.occurred_on,
       transactionTypeLabels[r.type],
-      r.amount.replace(".", ","),
+      // PostgREST devuelve numeric como número JSON; coma decimal para Excel en español.
+      String(Number(r.amount)).replace(".", ","),
       r.account.currency,
       r.account.name,
       r.to_account?.name,
