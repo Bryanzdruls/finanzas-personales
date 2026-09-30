@@ -31,6 +31,8 @@ export function TransactionForm({
   initial,
   defaultType = "expense",
   defaultDebtId,
+  defaultAccountId,
+  defaultToAccountId,
   today,
 }: {
   action: (prev: FormState, formData: FormData) => Promise<FormState>;
@@ -40,6 +42,8 @@ export function TransactionForm({
   initial?: Transaction;
   defaultType?: TransactionType;
   defaultDebtId?: string;
+  defaultAccountId?: string;
+  defaultToAccountId?: string;
   today: string;
 }) {
   const [state, formAction] = useActionState(action, undefined);
@@ -47,7 +51,9 @@ export function TransactionForm({
   const [debtId, setDebtId] = useState(initial?.debt_id ?? defaultDebtId ?? debts[0]?.debt_id ?? "");
   const debt = debts.find((d) => d.debt_id === debtId);
   const [accountId, setAccountId] = useState(
-    initial?.account_id ?? firstAccountIn(accounts, type === "debt_payment" ? debt?.currency : undefined),
+    initial?.account_id ??
+      defaultAccountId ??
+      firstAccountIn(accounts, type === "debt_payment" ? debt?.currency : undefined),
   );
   const currency = accounts.find((a) => a.id === accountId)?.currency ?? "COP";
   const visibleCategories = withFullNames(categories.filter((c) => c.kind === type));
@@ -139,7 +145,7 @@ export function TransactionForm({
         >
           {accounts.map((a) => (
             <option key={a.id} value={a.id}>
-              {a.name} ({a.currency})
+              {a.name} ({a.currency}){a.type === "credit_card" ? " · tarjeta" : ""}
             </option>
           ))}
         </select>
@@ -153,7 +159,7 @@ export function TransactionForm({
           <select
             id="to_account_id"
             name="to_account_id"
-            defaultValue={initial?.to_account_id ?? ""}
+            defaultValue={initial?.to_account_id ?? defaultToAccountId ?? ""}
             required
             className={inputClass}
           >

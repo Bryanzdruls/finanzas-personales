@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { AddButton } from "@/components/add-button";
+import { CreditCardList } from "@/components/credit-card-list";
 import { PageHeader } from "@/components/page-header";
 import { cardClass, sectionTitleClass } from "@/components/ui";
 import { formatMoney, type Currency } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
-import { accountTypeLabels, isInvestment, type AccountType } from "@/lib/types";
+import { accountTypeLabels, isCreditCard, isInvestment, type AccountType } from "@/lib/types";
 
 type Balance = {
   account_id: string;
@@ -14,13 +15,15 @@ type Balance = {
   archived: boolean;
   balance: string;
   last_snapshot_on: string | null;
+  credit_limit: string | null;
+  due_day: number | null;
 };
 
 export default async function CuentasPage() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("account_balances")
-    .select("account_id, name, type, currency, archived, balance, last_snapshot_on")
+    .select("account_id, name, type, currency, archived, balance, last_snapshot_on, credit_limit, due_day")
     .order("name")
     .returns<Balance[]>();
   if (error) throw new Error(error.message);
@@ -36,7 +39,7 @@ export default async function CuentasPage() {
       <div className="grid grid-cols-2 gap-3">
         {[...totals].map(([currency, accounts]) => (
           <div key={currency} className={`${cardClass} p-4`}>
-            <p className="text-sm text-muted">Total {currency}</p>
+            <p className="text-sm text-muted">Neto {currency}</p>
             <p className="mt-1 text-xl font-semibold tabular-nums">
               {formatMoney(
                 accounts.reduce((sum, a) => sum + Number(a.balance), 0),
@@ -47,7 +50,16 @@ export default async function CuentasPage() {
         ))}
       </div>
 
-      <AccountList title="Disponible" accounts={active.filter((a) => !isInvestment(a.type))} />
+      <AccountList
+        title="Disponible"
+        accounts={active.filter((a) => !isInvestment(a.type) && !isCreditCard(a.type))}
+      />
+      {active.some((a) => isCreditCard(a.type)) && (
+        <>
+          <h2 className={sectionTitleClass}>Tarjetas de crédito</h2>
+          <CreditCardList cards={active.filter((a) => isCreditCard(a.type))} />
+        </>
+      )}
       <AccountList title="Inversiones" accounts={active.filter((a) => isInvestment(a.type))} />
       {archived.length > 0 && <AccountList title="Archivadas" accounts={archived} />}
 

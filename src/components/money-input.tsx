@@ -12,12 +12,14 @@ export function MoneyInput({
   defaultValue,
   autoFocus,
   allowNegative,
+  required = true,
 }: {
   name: string;
   currency: Currency;
   defaultValue?: string | number;
   autoFocus?: boolean;
   allowNegative?: boolean;
+  required?: boolean;
 }) {
   const [text, setText] = useState(
     defaultValue === undefined ? "" : formatAmountInput(defaultValue, currency),
@@ -38,7 +40,7 @@ export function MoneyInput({
       </span>
       <input
         name={name}
-        required
+        required={required}
         inputMode="decimal"
         autoComplete="off"
         autoFocus={autoFocus}

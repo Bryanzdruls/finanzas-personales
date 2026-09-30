@@ -5,15 +5,39 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import type { FormState } from "@/lib/types";
-import { dbErrorMessage, firstError, isoDate, money } from "@/lib/validation";
+import { dbErrorMessage, firstError, isoDate, money, positiveMoney } from "@/lib/validation";
 
-const accountSchema = z.object({
-  name: z.string().trim().min(1, "Escribe un nombre.").max(60, "Máximo 60 caracteres."),
-  type: z.enum(["bank", "pension", "broker", "crypto", "cash", "other"], "Tipo inválido."),
-  currency: z.enum(["COP", "USD"], "Moneda inválida."),
-  initial_balance: money,
-  archived: z.preprocess((v) => v === "on", z.boolean()),
-});
+const accountSchema = z
+  .object({
+    name: z.string().trim().min(1, "Escribe un nombre.").max(60, "Máximo 60 caracteres."),
+    type: z.enum(
+      ["bank", "credit_card", "pension", "broker", "crypto", "cash", "other"],
+      "Tipo inválido.",
+    ),
+    currency: z.enum(["COP", "USD"], "Moneda inválida."),
+    initial_balance: money,
+    credit_limit: z.preprocess(
+      (v) => (v === "" || v === undefined ? null : v),
+      positiveMoney.nullable(),
+    ),
+    due_day: z.preprocess(
+      (v) => (v === "" || v === undefined ? null : Number(v)),
+      z
+        .number()
+        .int("El día de pago debe estar entre 1 y 31.")
+        .min(1, "El día de pago debe estar entre 1 y 31.")
+        .max(31, "El día de pago debe estar entre 1 y 31.")
+        .nullable(),
+    ),
+    archived: z.preprocess((v) => v === "on", z.boolean()),
+  })
+  // En la tarjeta se escribe lo que se debe (positivo) y se guarda negativo; el cupo y el día de
+  // pago solo aplican a tarjetas.
+  .transform((a) =>
+    a.type === "credit_card"
+      ? { ...a, initial_balance: -Math.abs(a.initial_balance) }
+      : { ...a, credit_limit: null, due_day: null },
+  );
 
 export async function saveAccount(id: string | null, _prev: FormState, formData: FormData) {
   const parsed = accountSchema.safeParse(Object.fromEntries(formData));
@@ -77,9 +101,14 @@ export async function saveSnapshot(
   if (!parsed.success) return { error: firstError(parsed.error) };
 
   const supabase = await createClient();
+  const { data: account } = await supabase.from("accounts").select("type").eq("id", accountId).single();
+  // En tarjetas se escribe la deuda del extracto (positiva) y se guarda como saldo negativo.
+  const balance =
+    account?.type === "credit_card" ? -Math.abs(parsed.data.balance) : parsed.data.balance;
+
   const { error } = await supabase
     .from("account_snapshots")
-    .upsert({ account_id: accountId, ...parsed.data }, { onConflict: "account_id,as_of" });
+    .upsert({ account_id: accountId, as_of: parsed.data.as_of, balance }, { onConflict: "account_id,as_of" });
   if (error) return { error: dbErrorMessage(error) };
 
   revalidatePath("/", "layout");

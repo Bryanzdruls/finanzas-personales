@@ -20,7 +20,7 @@ export async function getAccounts({ includeArchived = false } = {}) {
   const supabase = await createClient();
   let query = supabase
     .from("accounts")
-    .select("id, name, type, currency, initial_balance, color, archived")
+    .select("id, name, type, currency, initial_balance, color, archived, credit_limit, due_day")
     .order("name");
   if (!includeArchived) query = query.eq("archived", false);
   const { data, error } = await query;

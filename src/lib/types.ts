@@ -1,11 +1,12 @@
 import type { Currency } from "./format";
 
-export type AccountType = "bank" | "pension" | "broker" | "crypto" | "cash" | "other";
+export type AccountType = "bank" | "credit_card" | "pension" | "broker" | "crypto" | "cash" | "other";
 export type CategoryKind = "expense" | "income" | "debt";
 export type TransactionType = "expense" | "income" | "transfer" | "debt_payment";
 
 export const accountTypeLabels: Record<AccountType, string> = {
   bank: "Banco",
+  credit_card: "Tarjeta de crédito",
   pension: "Pensión",
   broker: "Bróker",
   crypto: "Cripto",
@@ -17,6 +18,11 @@ export const accountTypeLabels: Record<AccountType, string> = {
 const investmentTypes: AccountType[] = ["broker", "pension", "crypto"];
 export function isInvestment(type: AccountType) {
   return investmentTypes.includes(type);
+}
+
+// En una tarjeta de crédito el saldo es negativo: lo que se debe. En pantalla se muestra en positivo.
+export function isCreditCard(type: AccountType) {
+  return type === "credit_card";
 }
 
 export const categoryKindLabels: Record<CategoryKind, string> = {
@@ -42,6 +48,8 @@ export type Account = {
   initial_balance: string;
   color: string | null;
   archived: boolean;
+  credit_limit: string | null;
+  due_day: number | null;
 };
 
 export type Category = {

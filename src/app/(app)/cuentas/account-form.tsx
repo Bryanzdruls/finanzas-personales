@@ -6,7 +6,13 @@ import { MoneyInput } from "@/components/money-input";
 import { SubmitButton } from "@/components/submit-button";
 import { inputClass, labelClass } from "@/components/ui";
 import type { Currency } from "@/lib/format";
-import { accountTypeLabels, currencies, type Account, type FormState } from "@/lib/types";
+import {
+  accountTypeLabels,
+  currencies,
+  type Account,
+  type AccountType,
+  type FormState,
+} from "@/lib/types";
 
 export function AccountForm({
   action,
@@ -17,6 +23,11 @@ export function AccountForm({
 }) {
   const [state, formAction] = useActionState(action, undefined);
   const [currency, setCurrency] = useState<Currency>(initial?.currency ?? "COP");
+  const [type, setType] = useState<AccountType>(initial?.type ?? "bank");
+  const card = type === "credit_card";
+  // En la tarjeta el saldo guardado es negativo; se edita como deuda positiva.
+  const initialBalance = Number(initial?.initial_balance ?? 0);
+  const balanceValue = initial?.type === "credit_card" ? Math.abs(initialBalance) : initialBalance;
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
@@ -40,7 +51,13 @@ export function AccountForm({
           <label htmlFor="type" className={labelClass}>
             Tipo
           </label>
-          <select id="type" name="type" defaultValue={initial?.type ?? "bank"} className={inputClass}>
+          <select
+            id="type"
+            name="type"
+            value={type}
+            onChange={(e) => setType(e.target.value as AccountType)}
+            className={inputClass}
+          >
             {Object.entries(accountTypeLabels).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
@@ -67,18 +84,48 @@ export function AccountForm({
       </div>
 
       <div>
-        <label className={labelClass}>Saldo inicial</label>
+        <label className={labelClass}>{card ? "Deuda inicial de la tarjeta" : "Saldo inicial"}</label>
         <MoneyInput
-          key={currency}
+          key={`${currency}-${card}`}
           name="initial_balance"
           currency={currency}
-          defaultValue={initial?.initial_balance ?? 0}
-          allowNegative
+          defaultValue={balanceValue}
+          allowNegative={!card}
         />
         <p className="mt-1 px-1 text-xs text-muted">
-          Lo que tenía la cuenta antes de empezar a registrar movimientos.
+          {card
+            ? "Lo que debías en la tarjeta antes de empezar a registrar compras (0 si está al día)."
+            : "Lo que tenía la cuenta antes de empezar a registrar movimientos."}
         </p>
       </div>
+
+      {card && (
+        <div className="grid grid-cols-[1fr_7rem] gap-3">
+          <div>
+            <label className={labelClass}>Cupo (opcional)</label>
+            <MoneyInput
+              key={`limit-${currency}`}
+              name="credit_limit"
+              currency={currency}
+              defaultValue={initial?.credit_limit ?? undefined}
+              required={false}
+            />
+          </div>
+          <div>
+            <label htmlFor="due_day" className={labelClass}>
+              Día de pago
+            </label>
+            <input
+              id="due_day"
+              name="due_day"
+              inputMode="numeric"
+              defaultValue={initial?.due_day ?? ""}
+              placeholder="5"
+              className={inputClass}
+            />
+          </div>
+        </div>
+      )}
 
       {initial && (
         <label className="flex items-center justify-between rounded-xl bg-surface px-4 py-3">

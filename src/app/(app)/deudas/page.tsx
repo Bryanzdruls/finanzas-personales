@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AddButton } from "@/components/add-button";
+import { cardDebt, CreditCardList, type CreditCardBalance } from "@/components/credit-card-list";
 import { PageHeader } from "@/components/page-header";
 import { ProgressBar } from "@/components/progress-bar";
 import { cardClass, sectionTitleClass } from "@/components/ui";
@@ -21,7 +22,7 @@ type Balance = { debt_id: string; total_amount: string; paid: string; remaining:
 
 export default async function DeudasPage() {
   const supabase = await createClient();
-  const [debts, balances] = await Promise.all([
+  const [debts, balances, cards] = await Promise.all([
     supabase
       .from("debts")
       .select("id, creditor, currency, status, due_day, category:categories(icon, name)")
@@ -31,37 +32,52 @@ export default async function DeudasPage() {
       .from("debt_balances")
       .select("debt_id, total_amount, paid, remaining, progress_pct")
       .returns<Balance[]>(),
+    supabase
+      .from("account_balances")
+      .select("account_id, name, currency, balance, credit_limit, due_day")
+      .eq("type", "credit_card")
+      .eq("archived", false)
+      .order("name")
+      .returns<CreditCardBalance[]>(),
   ]);
   if (debts.error) throw new Error(debts.error.message);
   if (balances.error) throw new Error(balances.error.message);
+  if (cards.error) throw new Error(cards.error.message);
 
   const balanceById = new Map(balances.data.map((b) => [b.debt_id, b]));
   const rows = debts.data.map((d) => ({ ...d, ...balanceById.get(d.id)! }));
   const active = rows.filter((d) => d.status === "active");
   const closed = rows.filter((d) => d.status !== "active");
-  const pendingByCurrency = Map.groupBy(active, (d) => d.currency);
+  // Pendiente por moneda: deudas activas + lo que se debe en tarjetas.
+  const pending = new Map<Currency, number>();
+  for (const d of active) pending.set(d.currency, (pending.get(d.currency) ?? 0) + Number(d.remaining));
+  for (const c of cards.data) pending.set(c.currency, (pending.get(c.currency) ?? 0) + cardDebt(c));
 
   return (
     <>
       <PageHeader title="Deudas" />
 
-      {active.length > 0 && (
+      {pending.size > 0 && (
         <div className="grid grid-cols-2 gap-3">
-          {[...pendingByCurrency].map(([currency, list]) => (
+          {[...pending].map(([currency, total]) => (
             <div key={currency} className={`${cardClass} p-4`}>
               <p className="text-sm text-muted">Pendiente {currency}</p>
               <p className="mt-1 text-xl font-semibold text-negative tabular-nums">
-                {formatMoney(
-                  list.reduce((sum, d) => sum + Number(d.remaining), 0),
-                  currency,
-                )}
+                {formatMoney(total, currency)}
               </p>
             </div>
           ))}
         </div>
       )}
 
-      {rows.length === 0 && (
+      {cards.data.length > 0 && (
+        <>
+          <h2 className={sectionTitleClass}>Tarjetas de crédito</h2>
+          <CreditCardList cards={cards.data} />
+        </>
+      )}
+
+      {rows.length === 0 && cards.data.length === 0 && (
         <p className={`${cardClass} p-6 text-center text-muted`}>
           No tienes deudas registradas. Toca + para agregar una.
         </p>

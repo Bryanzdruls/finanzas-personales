@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { AddButton } from "@/components/add-button";
+import { cardDebt, CreditCardList } from "@/components/credit-card-list";
 import { MonthPicker } from "@/components/month-picker";
 import { ReviewBanner } from "@/components/review-banner";
 import { cardClass, sectionTitleClass } from "@/components/ui";
 import { formatShortDate, parseMonth } from "@/lib/dates";
 import { formatMoney, type Currency } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
-import { accountTypeLabels, isInvestment, type AccountType } from "@/lib/types";
+import { accountTypeLabels, isCreditCard, isInvestment, type AccountType } from "@/lib/types";
 
 type Summary = {
   currency: Currency;
@@ -23,6 +24,8 @@ type Balance = {
   currency: Currency;
   balance: string;
   last_snapshot_on: string | null;
+  credit_limit: string | null;
+  due_day: number | null;
 };
 
 const sum = (accounts: Balance[]) => accounts.reduce((total, a) => total + Number(a.balance), 0);
@@ -56,7 +59,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     supabase.from("net_worth").select("currency, assets, liabilities, net_worth").order("currency"),
     supabase
       .from("account_balances")
-      .select("account_id, name, type, currency, balance, last_snapshot_on")
+      .select("account_id, name, type, currency, balance, last_snapshot_on, credit_limit, due_day")
       .eq("archived", false)
       .order("name")
       .returns<Balance[]>(),
@@ -68,7 +71,8 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   if (balances.error) throw new Error(balances.error.message);
 
   const investments = balances.data.filter((a) => isInvestment(a.type));
-  const liquid = balances.data.filter((a) => !isInvestment(a.type));
+  const cards = balances.data.filter((a) => isCreditCard(a.type));
+  const liquid = balances.data.filter((a) => !isInvestment(a.type) && !isCreditCard(a.type));
 
   const summaries: Summary[] = summary.data.length
     ? summary.data
@@ -104,8 +108,14 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
       <div className="grid gap-3">
         {netWorth.data.map((row) => {
           const currency = row.currency as Currency;
-          const invested = sum(investments.filter((a) => a.currency === currency));
-          const available = Number(row.assets) - invested;
+          const inCurrency = (list: Balance[]) => list.filter((a) => a.currency === currency);
+          const invested = sum(inCurrency(investments));
+          // Deudas = pendiente de las deudas + lo que se debe en tarjetas de crédito. Un saldo a
+          // favor en la tarjeta cuenta como disponible, así el total cuadra con la vista net_worth.
+          const cardsOwed = inCurrency(cards).reduce((total, c) => total + cardDebt(c), 0);
+          const cardsCredit = inCurrency(cards).reduce((t, c) => t + Math.max(Number(c.balance), 0), 0);
+          const available = sum(inCurrency(liquid)) + cardsCredit;
+          const liabilities = Number(row.liabilities) + cardsOwed;
           return (
             <div key={currency} className={`${cardClass} p-4`}>
               <div className="flex items-baseline justify-between">
@@ -119,14 +129,21 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
                 <Stat label="Invertido" value={formatMoney(invested, currency)} />
                 <Stat
                   label="Deudas"
-                  value={formatMoney(row.liabilities, currency)}
-                  className={Number(row.liabilities) > 0 ? "text-negative" : ""}
+                  value={formatMoney(liabilities, currency)}
+                  className={liabilities > 0 ? "text-negative" : ""}
                 />
               </dl>
             </div>
           );
         })}
       </div>
+
+      {cards.length > 0 && (
+        <>
+          <h2 className={sectionTitleClass}>Tarjetas de crédito</h2>
+          <CreditCardList cards={cards} />
+        </>
+      )}
 
       {investments.length > 0 && (
         <>
