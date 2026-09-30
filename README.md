@@ -78,4 +78,4 @@ paso a paso están en la app, en **Más → Apple Pay**.
 - [x] Fase 2: CRUD de cuentas, categorías, movimientos y dashboard mensual
 - [x] Fase 3: deudas y abonos
 - [x] Fase 4: Apple Pay vía Atajos (automatización "Transacción") + reglas por comercio
-- [ ] Fase 5: gráficos, COP/USD, exportar CSV
+- [x] Fase 5: reportes (ingresos vs gastos, categorías del periodo) y exportar CSV

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { signOut } from "../actions";
 
 const menu = [
+  { href: "/reportes", icon: "📊", label: "Reportes y exportar" },
   { href: "/mas/categorias", icon: "🏷️", label: "Categorías" },
   { href: "/movimientos/revisar", icon: "📥", label: "Pagos por revisar" },
   { href: "/mas/apple-pay", icon: "💳", label: "Apple Pay" },

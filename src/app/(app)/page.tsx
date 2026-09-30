@@ -103,6 +103,9 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
       </section>
 
       <CategoryBreakdown expenses={expenses.data} monthKey={month.key} />
+      <Link href="/reportes" className="mt-3 block px-1 text-sm text-accent">
+        Ver tendencias de los últimos meses ›
+      </Link>
 
       <h2 className={sectionTitleClass}>Patrimonio neto</h2>
       <div className="grid gap-3">
