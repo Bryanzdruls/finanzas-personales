@@ -1,0 +1,3 @@
+# Scripts de shell con finales de línea Unix (si no, gradlew falla en Linux/macOS)
+*.sh text eol=lf
+android/gradlew text eol=lf
