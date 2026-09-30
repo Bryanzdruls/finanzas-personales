@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
+import { cardClass } from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "../actions";
 
@@ -7,8 +10,21 @@ export default async function MasPage() {
 
   return (
     <>
-      <h1 className="text-3xl font-bold">Más</h1>
-      <section className="mt-6 divide-y divide-border rounded-2xl bg-surface">
+      <PageHeader title="Más" />
+
+      <ul className={`${cardClass} divide-y divide-border`}>
+        <li>
+          <Link href="/mas/categorias" className="flex items-center gap-3 p-4">
+            <span aria-hidden className="text-xl">
+              🏷️
+            </span>
+            <span className="flex-1 font-medium">Categorías</span>
+            <span className="text-muted">›</span>
+          </Link>
+        </li>
+      </ul>
+
+      <section className={`${cardClass} mt-6 divide-y divide-border`}>
         <div className="p-4">
           <p className="text-sm text-muted">Sesión iniciada como</p>
           <p className="font-medium">{data?.claims.email}</p>
