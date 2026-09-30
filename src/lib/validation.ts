@@ -2,7 +2,8 @@ import { z } from "zod";
 import { parseAmount } from "./format";
 
 export const uuid = z.uuid("Selección inválida.");
-export const optionalUuid = z.preprocess((v) => (v === "" ? null : v), uuid.nullable());
+// Un campo que no se envió (p. ej. "cuenta destino" en un gasto) o que quedó vacío es null.
+export const optionalUuid = z.preprocess((v) => (v === "" || v === undefined ? null : v), uuid.nullable());
 export const optionalText = z.preprocess(
   (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : null),
   z.string().max(200, "Máximo 200 caracteres.").nullable(),
