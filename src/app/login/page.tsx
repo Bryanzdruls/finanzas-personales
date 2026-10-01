@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import { LogoMark, Wordmark } from "@/components/logo";
 import { isNativeAndroid } from "@/lib/native";
 import { createClient } from "@/lib/supabase/client";
 
@@ -37,11 +38,11 @@ export default function LoginPage() {
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-8 px-6 py-12">
       <div className="text-center">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent text-3xl text-accent-foreground">
-          $
-        </div>
-        <h1 className="text-2xl font-bold">Mis Finanzas</h1>
-        <p className="mt-1 text-muted">Tus gastos, ingresos y deudas en un solo lugar.</p>
+        <LogoMark className="mx-auto mb-5 h-20 w-20 drop-shadow-lg" />
+        <h1 className="text-3xl">
+          <Wordmark />
+        </h1>
+        <p className="mt-2 text-muted">Tus gastos, ingresos y deudas en un solo lugar.</p>
       </div>
       <Suspense>
         <GoogleSignIn />

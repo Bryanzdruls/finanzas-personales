@@ -4,6 +4,6 @@ export const inputClass =
 export const labelClass = "mb-1 block px-1 text-sm font-medium text-muted";
 export const primaryButtonClass =
   "tap w-full rounded-xl bg-accent px-4 py-3 font-semibold text-accent-foreground disabled:opacity-50";
-export const cardClass = "rounded-2xl bg-surface";
+export const cardClass = "rounded-2xl bg-surface shadow-[0_1px_3px_rgb(0_0_0/0.06)]";
 export const sectionTitleClass =
-  "mt-8 mb-2 px-1 text-sm font-semibold uppercase tracking-wide text-muted";
+  "mt-8 mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-muted";

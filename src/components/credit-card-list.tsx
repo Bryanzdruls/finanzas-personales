@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { formatShortDate, nextDueDate } from "@/lib/dates";
 import { formatMoney, type Currency } from "@/lib/format";
+import { Icon } from "./icons";
 import { ProgressBar } from "./progress-bar";
 import { cardClass } from "./ui";
 
@@ -28,7 +29,10 @@ export function CreditCardList({ cards }: { cards: CreditCardBalance[] }) {
           <li key={c.account_id} className={`${cardClass} p-4`}>
             <div className="flex items-start justify-between gap-3">
               <Link href={`/cuentas/${c.account_id}`} className="min-w-0 flex-1">
-                <p className="truncate font-medium">💳 {c.name}</p>
+                <p className="flex items-center gap-1.5 truncate font-medium">
+                  <Icon name="card" className="h-4 w-4 shrink-0 text-muted" />
+                  {c.name}
+                </p>
                 <p className="text-xs text-muted">
                   {c.due_day ? `Pagar antes del ${formatShortDate(nextDueDate(c.due_day))}` : "Tarjeta de crédito"}
                 </p>

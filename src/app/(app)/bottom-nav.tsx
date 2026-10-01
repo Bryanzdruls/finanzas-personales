@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { Icon, type IconName } from "@/components/icons";
 
-const items = [
-  { href: "/", label: "Inicio", icon: "🏠" },
-  { href: "/movimientos", label: "Movimientos", icon: "↕️" },
-  { href: "/cuentas", label: "Cuentas", icon: "🏦" },
-  { href: "/deudas", label: "Deudas", icon: "📉" },
-  { href: "/mas", label: "Más", icon: "⋯" },
+const items: { href: string; label: string; icon: IconName }[] = [
+  { href: "/", label: "Inicio", icon: "home" },
+  { href: "/movimientos", label: "Movimientos", icon: "movements" },
+  { href: "/cuentas", label: "Cuentas", icon: "wallet" },
+  { href: "/deudas", label: "Deudas", icon: "debt" },
+  { href: "/mas", label: "Más", icon: "more" },
 ];
 
 const isActive = (href: string, pathname: string) =>
@@ -31,11 +32,18 @@ export function BottomNav() {
               <Link
                 href={item.href}
                 onClick={() => setTapped({ href: item.href, from: pathname })}
-                className={`flex flex-col items-center gap-0.5 py-2 text-[11px] active:scale-95 ${
+                aria-current={active ? "page" : undefined}
+                className={`group flex flex-col items-center gap-1 pt-2 pb-1.5 text-[11px] font-medium active:scale-95 ${
                   active ? "text-accent" : "text-muted hover:text-foreground"
                 }`}
               >
-                <span aria-hidden className="text-xl leading-none">{item.icon}</span>
+                <span
+                  className={`flex h-7 w-14 items-center justify-center rounded-full transition-colors ${
+                    active ? "bg-accent/12" : "group-hover:bg-foreground/5"
+                  }`}
+                >
+                  <Icon name={item.icon} className="h-[22px] w-[22px]" />
+                </span>
                 {item.label}
               </Link>
             </li>

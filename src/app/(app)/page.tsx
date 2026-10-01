@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { AddButton } from "@/components/add-button";
 import { cardDebt, CreditCardList } from "@/components/credit-card-list";
+import { LOGO_BARS, LOGO_COIN, LogoMark } from "@/components/logo";
 import { MonthPicker } from "@/components/month-picker";
 import { ReviewBanner } from "@/components/review-banner";
 import { cardClass, sectionTitleClass } from "@/components/ui";
@@ -41,7 +42,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const month = parseMonth((await searchParams).mes);
   const supabase = await createClient();
 
-  const [summary, expenses, netWorth, balances] = await Promise.all([
+  const [summary, expenses, netWorth, balances, claims] = await Promise.all([
     supabase
       .from("monthly_summary")
       .select("currency, income, expenses, debt_payments, net")
@@ -64,6 +65,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
       .eq("archived", false)
       .order("name")
       .returns<Balance[]>(),
+    supabase.auth.getClaims(),
   ]);
 
   if (summary.error) throw new Error(summary.error.message);
@@ -81,7 +83,13 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
 
   return (
     <>
-      <h1 className="mb-4 text-3xl font-bold">Inicio</h1>
+      <header className="mb-6 flex items-center gap-3">
+        <LogoMark className="h-11 w-11" />
+        <div className="min-w-0">
+          <h1 className="truncate text-2xl font-bold tracking-tight">{greeting(claims.data?.claims)}</h1>
+          <p className="text-sm text-muted first-letter:uppercase">{todayLabel()}</p>
+        </div>
+      </header>
       <Suspense>
         <ReviewBanner />
       </Suspense>
@@ -89,17 +97,24 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
 
       <section className="mt-4 grid gap-3">
         {summaries.map((s) => (
-          <div key={s.currency} className={`${cardClass} p-5`}>
-            <p className="text-sm text-muted">Balance del mes · {s.currency}</p>
-            <p
-              className={`mt-1 text-3xl font-semibold tabular-nums ${Number(s.net) < 0 ? "text-negative" : ""}`}
-            >
-              {formatMoney(s.net, s.currency)}
+          <div
+            key={s.currency}
+            className="relative overflow-hidden rounded-3xl bg-accent p-5 text-accent-foreground shadow-lg shadow-accent/25"
+          >
+            <svg aria-hidden viewBox="0 0 52 52" className="absolute -right-6 -bottom-8 h-40 w-40 opacity-10">
+              {LOGO_BARS.map((b) => (
+                <rect key={b.x} x={b.x} y={b.y} width="8" height={b.h} rx="4" fill="currentColor" />
+              ))}
+              <circle {...LOGO_COIN} fill="currentColor" />
+            </svg>
+            <p className="text-sm opacity-80">
+              {Number(s.net) < 0 ? "Gastaste más de lo que entró" : "Te queda este mes"} · {s.currency}
             </p>
-            <dl className="mt-4 grid grid-cols-3 gap-2 text-sm">
-              <Stat label="Ingresos" value={formatMoney(s.income, s.currency)} className="text-positive" />
-              <Stat label="Gastos" value={formatMoney(s.expenses, s.currency)} />
-              <Stat label="Abonos" value={formatMoney(s.debt_payments, s.currency)} />
+            <p className="mt-1 text-4xl font-bold tracking-tight tabular-nums">{formatMoney(s.net, s.currency)}</p>
+            <dl className="mt-5 grid grid-cols-3 gap-2 rounded-2xl bg-black/10 p-3 text-sm">
+              <Stat label="Ingresos" value={formatMoney(s.income, s.currency)} labelClassName="opacity-75" />
+              <Stat label="Gastos" value={formatMoney(s.expenses, s.currency)} labelClassName="opacity-75" />
+              <Stat label="Abonos" value={formatMoney(s.debt_payments, s.currency)} labelClassName="opacity-75" />
             </dl>
           </div>
         ))}
@@ -195,10 +210,20 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   );
 }
 
-function Stat({ label, value, className = "" }: { label: string; value: string; className?: string }) {
+function Stat({
+  label,
+  value,
+  className = "",
+  labelClassName = "text-muted",
+}: {
+  label: string;
+  value: string;
+  className?: string;
+  labelClassName?: string;
+}) {
   return (
     <div className="min-w-0">
-      <dt className="text-muted">{label}</dt>
+      <dt className={labelClassName}>{label}</dt>
       <dd className={`truncate font-medium tabular-nums ${className}`}>{value}</dd>
     </div>
   );
@@ -255,4 +280,18 @@ function CategoryBreakdown({ expenses, monthKey }: { expenses: Expense[]; monthK
       </Link>
     </>
   );
+}
+
+function greeting(claims: { user_metadata?: { full_name?: string; name?: string } } | undefined) {
+  const name = (claims?.user_metadata?.full_name ?? claims?.user_metadata?.name ?? "").split(" ")[0];
+  return name ? `Hola, ${name}` : "Hola";
+}
+
+function todayLabel() {
+  return new Intl.DateTimeFormat("es-CO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "America/Bogota",
+  }).format(new Date());
 }
