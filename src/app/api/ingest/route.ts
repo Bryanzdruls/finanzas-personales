@@ -38,6 +38,11 @@ export async function POST(request: NextRequest) {
   return reply(result.status, result.message);
 }
 
+// Abrir la URL en Safari sirve para comprobar desde el iPhone que el servidor es alcanzable.
+export function GET() {
+  return reply(200, "Mis Finanzas: el endpoint está activo. El Atajo debe usar el método POST.");
+}
+
 type Result = { status: number; message: string };
 
 // Cliente sin sesión: las funciones de la base validan el token y actúan como su dueño.
