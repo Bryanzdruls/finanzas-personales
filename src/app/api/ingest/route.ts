@@ -13,25 +13,48 @@ import { parseGoogleWalletNotification, type ParsedPayment } from "@/lib/wallet-
 // formato con un deploy sin reinstalar la app):
 //   { "source": "google_pay", "title": "Crepes & Waffles", "text": "$45.000,00 con Visa ••1234" }
 //
-// Responde { ok, message } para mostrarlo como notificación.
+// Responde { ok, message } para mostrarlo como notificación. Cada intento con token válido
+// queda en ingest_events (Más → Pagos automáticos → Últimos intentos) con lo que llegó.
 export async function POST(request: NextRequest) {
   const body = await readBody(request);
   const token = bearerToken(request) ?? stringField(body.token);
   if (!token) return reply(401, "Falta el token. Revisa el encabezado Authorization.");
 
-  if (body.source === "bancolombia") return ingestBancolombia(token, body);
+  const source = typeof body.source === "string" ? body.source : "apple_pay";
+  const result = source === "bancolombia" ? await ingestBancolombia(token, body) : await ingestPayment(token, body);
 
+  // Sin el token en el registro: es una credencial y no aporta para diagnosticar.
+  const payload = { ...body };
+  delete payload.token;
+  const { error } = await anonClient().rpc("log_ingest_event", {
+    p_token: token,
+    p_source: source,
+    p_status: result.status,
+    p_message: result.message,
+    p_payload: JSON.stringify(payload).slice(0, 2000),
+  });
+  if (error) console.error("log_ingest_event", error.message);
+
+  return reply(result.status, result.message);
+}
+
+type Result = { status: number; message: string };
+
+// Cliente sin sesión: las funciones de la base validan el token y actúan como su dueño.
+function anonClient() {
+  return createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+}
+
+async function ingestPayment(token: string, body: Record<string, unknown>): Promise<Result> {
   const source = body.source === "google_pay" ? "google_pay" : "apple_pay";
   const payment = source === "google_pay" ? fromGoogleWallet(body) : fromFields(body);
   if (!payment) {
     // El texto crudo queda en los logs para ajustar el parser si Google cambia el formato.
     console.warn("ingest: pago no reconocido", source, JSON.stringify(body).slice(0, 500));
-    return reply(422, "No se reconoció el monto del pago.");
+    return { status: 422, message: `No se reconoció el monto (llegó: ${describe(body.amount ?? body.text)})` };
   }
 
-  // Cliente sin sesión: la función de la base valida el token y registra como su dueño.
-  const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
-  const { error } = await supabase.rpc("ingest_payment", {
+  const { error } = await anonClient().rpc("ingest_payment", {
     p_token: token,
     p_amount: payment.amount,
     p_merchant: payment.merchant,
@@ -40,31 +63,37 @@ export async function POST(request: NextRequest) {
   });
 
   if (error) {
-    if (error.code === "28000") return reply(401, "Token inválido o revocado.");
-    if (error.code === "22023") return reply(400, "Monto inválido.");
+    if (error.code === "28000") return { status: 401, message: "Token inválido o revocado." };
+    if (error.code === "22023") {
+      return { status: 400, message: `Monto inválido: ${payment.amount} (llegó: ${describe(body.amount)})` };
+    }
     console.error("ingest_payment", error);
-    return reply(500, "No se pudo registrar el pago.");
+    return { status: 500, message: "No se pudo registrar el pago." };
   }
 
   const where = payment.merchant ? ` en ${payment.merchant}` : "";
-  return reply(200, `Registrado ${formatMoney(payment.amount, "COP")}${where}`);
+  return { status: 200, message: `Registrado ${formatMoney(payment.amount, "COP")}${where}` };
+}
+
+// Valor recibido, recortado, para mostrarlo en mensajes de error.
+function describe(value: unknown) {
+  return JSON.stringify(value ?? null).slice(0, 80);
 }
 
 // SMS (Atajo "Mensaje") o correo (Gmail + Apps Script) de alertas de Bancolombia:
 //   { "source": "bancolombia", "channel": "sms" | "email", "text": "Bancolombia: Transferiste ..." }
-async function ingestBancolombia(token: string, body: Record<string, unknown>) {
+async function ingestBancolombia(token: string, body: Record<string, unknown>): Promise<Result> {
   const text = typeof body.text === "string" ? body.text.slice(0, 4000) : "";
   const movement = parseBancolombiaMessage(text);
   if (!movement || movement.kind === "unknown") {
     console.warn("ingest: mensaje de Bancolombia no reconocido", body.channel, text.slice(0, 500));
-    return reply(422, "No se reconoció el mensaje de Bancolombia.");
+    return { status: 422, message: "No se reconoció el mensaje de Bancolombia." };
   }
   if (!ENABLED_KINDS.includes(movement.kind)) {
-    return reply(200, `Ignorado (${movement.description.toLowerCase()})`);
+    return { status: 200, message: `Ignorado (${movement.description.toLowerCase()})` };
   }
 
-  const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
-  const { data, error } = await supabase.rpc("ingest_bank_movement", {
+  const { data, error } = await anonClient().rpc("ingest_bank_movement", {
     p_token: token,
     p_type: movement.kind === "income" ? "income" : "expense",
     p_amount: movement.amount,
@@ -75,15 +104,17 @@ async function ingestBancolombia(token: string, body: Record<string, unknown>) {
   });
 
   if (error) {
-    if (error.code === "28000") return reply(401, "Token inválido o revocado.");
-    if (error.code === "22023") return reply(400, "Monto inválido.");
+    if (error.code === "28000") return { status: 401, message: "Token inválido o revocado." };
+    if (error.code === "22023") return { status: 400, message: `Monto inválido: ${movement.amount}` };
     console.error("ingest_bank_movement", error);
-    return reply(500, "No se pudo registrar el movimiento.");
+    return { status: 500, message: "No se pudo registrar el movimiento." };
   }
 
   const amount = formatMoney(movement.amount, "COP");
-  if ((data as { duplicate?: boolean })?.duplicate) return reply(200, `Ya estaba registrado: ${amount}`);
-  return reply(200, `Registrado ${amount} · ${movement.description}`);
+  if ((data as { duplicate?: boolean })?.duplicate) {
+    return { status: 200, message: `Ya estaba registrado: ${amount}` };
+  }
+  return { status: 200, message: `Registrado ${amount} · ${movement.description}` };
 }
 
 function fromFields(body: Record<string, unknown>): ParsedPayment | null {

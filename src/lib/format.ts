@@ -23,11 +23,14 @@ export function parseAmount(input: string): number {
 // Monto que manda el Atajo de iOS. Su formato depende de la región del iPhone
 // ("$45.000,00", "COP 45.000", "45,000.00", "US$12.99"): si el último separador tiene 1-2
 // dígitos después es el decimal; si no, todos son de miles.
+// Si el texto trae más números (tarjeta "9006", fecha, hora), se toma el que lleva símbolo de
+// moneda; si ninguno lo lleva, el primero. Antes se unían todos los dígitos en un número absurdo.
 export function parseWalletAmount(input: unknown): number {
   if (typeof input === "number") return input;
   if (typeof input !== "string") return NaN;
-  const cleaned = input.replace(/[^\d.,]/g, "");
-  if (!/\d/.test(cleaned)) return NaN;
+  const tokens = [...input.matchAll(/(US\$|USD|COP|\$)?\s?(\d[\d.,]*\d|\d)/gi)];
+  if (tokens.length === 0) return NaN;
+  const cleaned = (tokens.find((t) => t[1]) ?? tokens[0])[2];
   const lastSep = Math.max(cleaned.lastIndexOf("."), cleaned.lastIndexOf(","));
   const decimals = lastSep >= 0 ? cleaned.length - lastSep - 1 : 0;
   if (lastSep >= 0 && decimals >= 1 && decimals <= 2) {

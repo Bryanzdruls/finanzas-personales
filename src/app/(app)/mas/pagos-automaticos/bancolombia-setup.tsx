@@ -41,7 +41,8 @@ export function BancolombiaSetup({ endpoint }: { endpoint: string }) {
               <code className={code}>channel</code> → escribe <code className={code}>sms</code>
             </li>
             <li>
-              <code className={code}>text</code> → Entrada del atajo › <strong>Contenido</strong>
+              <code className={code}>text</code> → <strong>no lo escribas</strong>: elige la burbuja azul{" "}
+              <strong>Entrada del atajo</strong> y luego la propiedad <strong>Contenido</strong>
             </li>
           </ul>
         </li>

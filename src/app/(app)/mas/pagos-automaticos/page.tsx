@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revokeToken } from "./actions";
 import { AndroidCapture } from "./android-capture";
 import { BancolombiaSetup } from "./bancolombia-setup";
+import { IngestHistory } from "./ingest-history";
 import { TokenForm } from "./token-form";
 
 type Token = {
@@ -46,6 +47,8 @@ export default async function PagosAutomaticosPage() {
         Los pagos con Apple Pay o Google Wallet y los movimientos de Bancolombia se registran solos y quedan en{" "}
         <strong>Por revisar</strong> para que confirmes categoría y cuenta.
       </p>
+
+      <IngestHistory />
 
       {tokens.length > 0 && <h2 className={sectionTitleClass}>Conectados</h2>}
       {tokens.length > 0 && (
@@ -112,18 +115,27 @@ export default async function PagosAutomaticosPage() {
               </li>
               <li>
                 En <strong>Cuerpo de la solicitud</strong> elige <strong>JSON</strong> y agrega tres campos de
-                texto, tomando cada valor de la <strong>Entrada del atajo</strong>:
+                texto. La <em>clave</em> se escribe; el <em>valor</em> <strong>no se escribe</strong>: toca el
+                campo, elige la burbuja azul <strong>Entrada del atajo</strong> y luego tócala para escoger la
+                propiedad:
                 <ul className="mt-1 list-disc pl-5">
                   <li>
-                    <code>amount</code> → Importe / Monto
+                    <code>amount</code> → burbuja <strong>Entrada del atajo</strong> › propiedad{" "}
+                    <strong>Importe</strong> (o Monto)
                   </li>
                   <li>
-                    <code>merchant</code> → Comerciante
+                    <code>merchant</code> → burbuja <strong>Entrada del atajo</strong> › propiedad{" "}
+                    <strong>Comerciante</strong>
                   </li>
                   <li>
-                    <code>card</code> → Tarjeta o pase
+                    <code>card</code> → burbuja <strong>Entrada del atajo</strong> › propiedad{" "}
+                    <strong>Tarjeta o pase</strong>
                   </li>
                 </ul>
+                <p className="mt-1 text-xs text-muted">
+                  Si en el valor ves letras normales en vez de una burbuja azul, está escrito a mano y no
+                  funcionará.
+                </p>
               </li>
               <li>
                 Opcional: agrega <strong>Mostrar notificación</strong> con el resultado para confirmar cada
