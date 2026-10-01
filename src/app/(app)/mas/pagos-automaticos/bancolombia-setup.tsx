@@ -52,11 +52,11 @@ export function BancolombiaSetup({ endpoint }: { endpoint: string }) {
         </li>
       </ol>
 
-      <h2 className={sectionTitleClass}>Bancolombia · correo (respaldo)</h2>
+      <h2 className={sectionTitleClass}>Bancolombia · correo (sincronización nocturna)</h2>
       <div className={`${cardClass} flex flex-col gap-3 p-4 text-sm`}>
         <p className="text-muted">
-          Revisa tu Gmail cada 5 minutos y, cada noche a las 21:00, <strong>sincroniza los últimos 2 días</strong>{" "}
-          para registrar lo que el SMS no haya capturado, sin duplicar. Corre en tu propia cuenta de Google: la
+          Cada noche a las 21:00 revisa los correos de alertas de los <strong>últimos 2 días</strong> y registra
+          lo que el SMS no haya capturado, sin duplicar. Corre en tu propia cuenta de Google: la
           app no tiene acceso a tu correo.
         </p>
         <ol className="flex list-decimal flex-col gap-3 pl-5">
@@ -83,13 +83,13 @@ export function BancolombiaSetup({ endpoint }: { endpoint: string }) {
             <em>Configuración avanzada → Ir al proyecto</em>: es tu propio script.
           </li>
           <li>
-            Listo. En <strong>Ejecuciones</strong> ves cada revisión. Si el SMS ya registró el movimiento, el
-            correo responde &quot;Ya estaba registrado&quot;. Para ponerte al día de una semana, ejecuta una vez{" "}
+            Listo. En <strong>Ejecuciones</strong> ves cada sincronización. Lo que el SMS ya registró responde
+            &quot;Ya estaba registrado&quot;. Para ponerte al día de una semana, ejecuta una vez{" "}
             <code className={code}>sincronizar7dias</code>.
           </li>
           <li>
             ¿Ya tenías el script instalado? Pega el código nuevo encima y vuelve a ejecutar{" "}
-            <code className={code}>setup</code> para crear la sincronización nocturna.
+            <code className={code}>setup</code> para dejar solo la sincronización nocturna.
           </li>
         </ol>
         <details>
