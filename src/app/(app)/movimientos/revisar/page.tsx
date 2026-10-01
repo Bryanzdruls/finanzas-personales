@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { ApproveButton } from "@/components/approve-button";
-import { DeleteButton } from "@/components/delete-button";
+import { MergeButton } from "@/components/merge-button";
 import { PageHeader } from "@/components/page-header";
 import { cardClass } from "@/components/ui";
 import { formatShortDate } from "@/lib/dates";
+import { type DuplicateCandidate, loadDuplicateMatches } from "@/lib/duplicates";
 import { formatMoney, type Currency } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
-import { approveTransaction, deleteFromReview } from "../actions";
+import { approveTransaction, mergeAllDuplicates, mergeDuplicate } from "../actions";
 
 type Row = {
   id: string;
@@ -37,24 +38,11 @@ export default async function RevisarPage() {
     .returns<Row[]>();
   if (error) throw new Error(error.message);
 
-  // Posible duplicado: otro movimiento del mismo día, monto y cuenta registrado antes.
-  const dates = data.map((t) => t.occurred_on).sort();
-  const { data: sameDays } = dates.length
-    ? await supabase
-        .from("transactions")
-        .select("id, occurred_on, amount, account_id, created_at")
-        .gte("occurred_on", dates[0])
-        .lte("occurred_on", dates.at(-1)!)
-    : { data: [] };
-  const key = (t: { occurred_on: string; amount: string | number; account_id: string }) =>
-    `${t.occurred_on}|${Number(t.amount)}|${t.account_id}`;
-  const earliest = new Map<string, string>();
-  for (const t of sameDays ?? []) {
-    const k = key(t);
-    const prev = earliest.get(k);
-    if (!prev || t.created_at < prev) earliest.set(k, t.created_at);
-  }
-  const isDuplicate = (t: Row) => (earliest.get(key(t)) ?? t.created_at) < t.created_at;
+  // Posible duplicado: otro movimiento de la misma cuenta y monto con fecha a ±1 día.
+  const matches = await loadDuplicateMatches(
+    supabase,
+    data.map((t) => t.occurred_on),
+  );
 
   return (
     <>
@@ -67,44 +55,58 @@ export default async function RevisarPage() {
       {data.length === 0 ? (
         <p className={`${cardClass} p-6 text-center text-muted`}>Todo al día 🎉</p>
       ) : (
-        <ul className={`${cardClass} divide-y divide-border`}>
-          {data.map((t) => (
-            <li key={t.id} className="flex items-center gap-3 p-4">
-              <Link href={`/movimientos/${t.id}`} className="flex min-w-0 flex-1 items-center gap-3">
-                <span aria-hidden className="text-2xl">
-                  {t.type === "transfer" ? "🔄" : (t.category?.icon ?? "❔")}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{t.description ?? t.merchant ?? "Pago sin comercio"}</p>
-                  <p className="truncate text-xs text-muted">
-                    {formatShortDate(t.occurred_on)} · {t.category?.name ?? "Sin categoría"} · {t.account.name}
-                  </p>
-                  {isDuplicate(t) && (
-                    <p className="mt-1 inline-block rounded-full bg-negative/10 px-2 py-0.5 text-xs font-medium text-negative">
-                      Posible duplicado
+        <>
+          {matches.size >= 2 && (
+            <MergeButton
+              wide
+              action={mergeAllDuplicates}
+              label={`Fusionar los ${matches.size} duplicados`}
+              confirmMessage={`¿Fusionar los ${matches.size} posibles duplicados? Se conserva el movimiento original de cada pareja y se borra el repetido.`}
+            />
+          )}
+          <ul className={`${cardClass} divide-y divide-border`}>
+            {data.map((t) => (
+              <li key={t.id} className="flex items-center gap-3 p-4">
+                <Link href={`/movimientos/${t.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+                  <span aria-hidden className="text-2xl">
+                    {t.type === "transfer" ? "🔄" : (t.category?.icon ?? "❔")}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{t.description ?? t.merchant ?? "Pago sin comercio"}</p>
+                    <p className="truncate text-xs text-muted">
+                      {formatShortDate(t.occurred_on)} · {t.category?.name ?? "Sin categoría"} · {t.account.name}
                     </p>
-                  )}
-                </div>
-                <p
-                  className={`font-medium whitespace-nowrap tabular-nums ${t.type === "income" ? "text-positive" : ""}`}
-                >
-                  {t.type === "income" ? "+" : ""}
-                  {formatMoney(t.amount, t.account.currency)}
-                </p>
-              </Link>
-              {isDuplicate(t) && (
-                <DeleteButton
-                  compact
-                  action={deleteFromReview.bind(null, t.id)}
-                  confirmMessage="¿Eliminar este movimiento repetido?"
-                  label="Eliminar duplicado"
-                />
-              )}
-              <ApproveButton action={approveTransaction.bind(null, t.id)} />
-            </li>
-          ))}
-        </ul>
+                    {matches.has(t.id) && (
+                      <p className="mt-1 text-xs text-negative">
+                        <span className="rounded-full bg-negative/10 px-2 py-0.5 font-medium">Posible duplicado</span>{" "}
+                        de {describe(matches.get(t.id)!)}
+                      </p>
+                    )}
+                  </div>
+                  <p
+                    className={`font-medium whitespace-nowrap tabular-nums ${t.type === "income" ? "text-positive" : ""}`}
+                  >
+                    {t.type === "income" ? "+" : ""}
+                    {formatMoney(t.amount, t.account.currency)}
+                  </p>
+                </Link>
+                {matches.has(t.id) && (
+                  <MergeButton
+                    action={mergeDuplicate.bind(null, t.id, matches.get(t.id)!.id)}
+                    confirmMessage={`¿Fusionar con ${describe(matches.get(t.id)!)}? Se conserva ese movimiento y se borra este.`}
+                  />
+                )}
+                <ApproveButton action={approveTransaction.bind(null, t.id)} />
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </>
   );
+}
+
+function describe(t: DuplicateCandidate) {
+  const name = t.description ?? t.merchant ?? (t.source === "manual" ? "el anotado a mano" : "otro movimiento");
+  return `"${name}" del ${formatShortDate(t.occurred_on)}`;
 }

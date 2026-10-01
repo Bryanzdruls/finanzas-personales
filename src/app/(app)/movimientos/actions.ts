@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { AUTOMATIC_SOURCES, learnFromReview } from "@/lib/apple-pay";
 import { syncDebtStatus } from "@/lib/debts";
+import { loadDuplicateMatches } from "@/lib/duplicates";
 import { createClient } from "@/lib/supabase/server";
 import type { FormState } from "@/lib/types";
 import {
@@ -157,17 +158,65 @@ export async function deleteTransaction(id: string): Promise<FormState> {
   redirect(deleted?.debt_id ? `/deudas/${deleted.debt_id}` : "/movimientos");
 }
 
-// Borra un movimiento desde la bandeja "Por revisar" (p. ej. un duplicado) sin salir de ella.
-export async function deleteFromReview(id: string): Promise<FormState> {
-  const supabase = await createClient();
-  const { data: deleted, error } = await supabase
+type Supabase = Awaited<ReturnType<typeof createClient>>;
+
+// Fusiona un movimiento repetido con el que se conserva (normalmente el anotado a mano): se borra el
+// repetido y el conservado recibe su huella del banco, para que una nueva sincronización no lo cree otra vez.
+async function merge(supabase: Supabase, duplicateId: string, keepId: string) {
+  const { data: rows, error } = await supabase
     .from("transactions")
-    .delete()
-    .eq("id", id)
-    .select("debt_id")
-    .maybeSingle();
+    .select("id, account_id, amount, occurred_on, external_ref, merchant, card_name")
+    .in("id", [duplicateId, keepId]);
+  if (error) return dbErrorMessage(error);
+
+  const duplicate = rows.find((r) => r.id === duplicateId);
+  const keep = rows.find((r) => r.id === keepId);
+  if (!duplicate || !keep || duplicateId === keepId) return "No se encontró el movimiento.";
+  if (
+    duplicate.account_id !== keep.account_id ||
+    Number(duplicate.amount) !== Number(keep.amount) ||
+    Math.abs(Date.parse(duplicate.occurred_on) - Date.parse(keep.occurred_on)) > 86_400_000
+  ) {
+    return "Los movimientos no coinciden en cuenta, monto y fecha.";
+  }
+
+  const { error: deleteError } = await supabase.from("transactions").delete().eq("id", duplicateId);
+  if (deleteError) return dbErrorMessage(deleteError);
+
+  const { error: updateError } = await supabase
+    .from("transactions")
+    .update({
+      external_ref: keep.external_ref ?? duplicate.external_ref,
+      merchant: keep.merchant ?? duplicate.merchant,
+      card_name: keep.card_name ?? duplicate.card_name,
+    })
+    .eq("id", keepId);
+  if (updateError) return dbErrorMessage(updateError);
+}
+
+export async function mergeDuplicate(duplicateId: string, keepId: string): Promise<FormState> {
+  const supabase = await createClient();
+  const error = await merge(supabase, duplicateId, keepId);
+  revalidatePath("/", "layout");
+  if (error) return { error };
+}
+
+// Fusiona todos los posibles duplicados de "Por revisar"; las parejas se recalculan aquí.
+export async function mergeAllDuplicates(): Promise<FormState> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("transactions").select("occurred_on").eq("needs_review", true);
   if (error) return { error: dbErrorMessage(error) };
 
-  await syncDebtStatus(supabase, [deleted?.debt_id]);
+  const matches = await loadDuplicateMatches(
+    supabase,
+    data.map((t) => t.occurred_on),
+  );
+  for (const [duplicateId, keep] of matches) {
+    const mergeError = await merge(supabase, duplicateId, keep.id);
+    if (mergeError) {
+      revalidatePath("/", "layout");
+      return { error: mergeError };
+    }
+  }
   revalidatePath("/", "layout");
 }
