@@ -156,3 +156,18 @@ export async function deleteTransaction(id: string): Promise<FormState> {
   revalidatePath("/", "layout");
   redirect(deleted?.debt_id ? `/deudas/${deleted.debt_id}` : "/movimientos");
 }
+
+// Borra un movimiento desde la bandeja "Por revisar" (p. ej. un duplicado) sin salir de ella.
+export async function deleteFromReview(id: string): Promise<FormState> {
+  const supabase = await createClient();
+  const { data: deleted, error } = await supabase
+    .from("transactions")
+    .delete()
+    .eq("id", id)
+    .select("debt_id")
+    .maybeSingle();
+  if (error) return { error: dbErrorMessage(error) };
+
+  await syncDebtStatus(supabase, [deleted?.debt_id]);
+  revalidatePath("/", "layout");
+}
