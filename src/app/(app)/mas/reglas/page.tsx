@@ -1,9 +1,10 @@
 import { DeleteButton } from "@/components/delete-button";
 import { PageHeader } from "@/components/page-header";
 import { cardClass, sectionTitleClass } from "@/components/ui";
-import { getCategories } from "@/lib/queries";
+import { getAccounts, getCategories } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 import { deleteCard, deleteRule } from "./actions";
+import { CardForm } from "./card-form";
 import { RuleForm } from "./rule-form";
 
 type Rule = { id: string; pattern: string; category: { name: string; icon: string | null } | null };
@@ -11,7 +12,7 @@ type Card = { id: string; card_key: string; account: { name: string } };
 
 export default async function ReglasPage() {
   const supabase = await createClient();
-  const [rules, cards, categories] = await Promise.all([
+  const [rules, cards, categories, accounts, recent] = await Promise.all([
     supabase
       .from("merchant_rules")
       .select("id, pattern, category:categories(name, icon)")
@@ -23,15 +24,23 @@ export default async function ReglasPage() {
       .order("card_key")
       .returns<Card[]>(),
     getCategories(),
+    getAccounts(),
+    // Nombres de tarjeta que ya llegaron, para sugerirlos al asignarlas a una cuenta.
+    supabase.from("transactions").select("card_name").not("card_name", "is", null).limit(200),
   ]);
   if (rules.error) throw new Error(rules.error.message);
   if (cards.error) throw new Error(cards.error.message);
+
+  const mapped = new Set(cards.data.map((c) => c.card_key));
+  const seen = [...new Set((recent.data ?? []).map((t) => String(t.card_name).trim().toLowerCase()))]
+    .filter((c) => c && !mapped.has(c))
+    .slice(0, 10);
 
   return (
     <>
       <PageHeader title="Reglas" backHref="/mas" />
       <p className="px-1 text-sm text-muted">
-        Así se clasifican los pagos que llegan de Apple Pay. Se aprenden solas cuando revisas un pago, y
+        Así se clasifican los movimientos automáticos (Apple Pay, Bancolombia, Google Wallet). Se aprenden al revisarlos, y
         puedes agregar las tuyas. Una regla corta (&quot;uber&quot;) cubre todas las variantes del comercio.
       </p>
 
@@ -80,6 +89,10 @@ export default async function ReglasPage() {
           </li>
         )}
       </ul>
+
+      <div className={`${cardClass} mt-3 p-4`}>
+        <CardForm accounts={accounts} seen={seen} />
+      </div>
     </>
   );
 }

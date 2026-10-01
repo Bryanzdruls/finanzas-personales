@@ -38,3 +38,17 @@ export async function revokeToken(id: string): Promise<FormState> {
 
   revalidatePath("/mas/pagos-automaticos");
 }
+
+// Cambia la cuenta a la que van los pagos de un token (p. ej. Apple Pay -> tarjeta Nu) sin
+// tener que generar otro token ni tocar el Atajo.
+export async function updateTokenAccount(id: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = uuid.safeParse(formData.get("default_account_id"));
+  if (!parsed.success) return { error: "Elige una cuenta." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("api_tokens").update({ default_account_id: parsed.data }).eq("id", id);
+  if (error) return { error: dbErrorMessage(error) };
+
+  revalidatePath("/mas/pagos-automaticos");
+  return {};
+}

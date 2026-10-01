@@ -6,10 +6,11 @@ import { cardClass, sectionTitleClass } from "@/components/ui";
 import { formatShortDate } from "@/lib/dates";
 import { getAccounts } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
-import { revokeToken } from "./actions";
+import { revokeToken, updateTokenAccount } from "./actions";
 import { AndroidCapture } from "./android-capture";
 import { BancolombiaSetup } from "./bancolombia-setup";
 import { IngestHistory } from "./ingest-history";
+import { TokenAccount } from "./token-account";
 import { TokenForm } from "./token-form";
 
 type Token = {
@@ -17,6 +18,7 @@ type Token = {
   name: string;
   last_used_at: string | null;
   created_at: string;
+  default_account_id: string;
   account: { name: string };
 };
 
@@ -26,7 +28,7 @@ export default async function PagosAutomaticosPage() {
     supabase
       .from("api_tokens")
       .select(
-        "id, name, last_used_at, created_at, account:accounts!api_tokens_default_account_id_user_id_fkey(name)",
+        "id, name, last_used_at, created_at, default_account_id, account:accounts!api_tokens_default_account_id_user_id_fkey(name)",
       )
       .order("created_at")
       .returns<Token[]>(),
@@ -58,11 +60,15 @@ export default async function PagosAutomaticosPage() {
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{t.name}</p>
                 <p className="text-xs text-muted">
-                  {t.account.name} ·{" "}
                   {t.last_used_at
                     ? `usado ${formatShortDate(t.last_used_at.slice(0, 10))}`
                     : "sin usar todavía"}
                 </p>
+                <TokenAccount
+                  action={updateTokenAccount.bind(null, t.id)}
+                  accounts={accounts}
+                  value={t.default_account_id}
+                />
               </div>
               <DeleteButton
                 compact
