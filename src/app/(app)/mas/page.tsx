@@ -21,10 +21,10 @@ export default async function MasPage() {
     <>
       <PageHeader title="Más" />
 
-      <ul className={`${cardClass} divide-y divide-border`}>
+      <ul className={`${cardClass} divide-y divide-border overflow-hidden`}>
         {menu.map((item) => (
           <li key={item.href}>
-            <Link href={item.href} className="flex items-center gap-3 p-4">
+            <Link href={item.href} className="row-link flex items-center gap-3 p-4">
               <span aria-hidden className="text-xl">
                 {item.icon}
               </span>
@@ -41,7 +41,7 @@ export default async function MasPage() {
           <p className="font-medium">{data?.claims.email}</p>
         </div>
         <form action={signOut}>
-          <button type="submit" className="w-full p-4 text-left font-medium text-negative">
+          <button type="submit" className="row-link w-full p-4 text-left font-medium text-negative">
             Cerrar sesión
           </button>
         </form>

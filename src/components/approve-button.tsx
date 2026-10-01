@@ -12,7 +12,7 @@ export function ApproveButton({ action }: { action: () => Promise<FormState> }) 
         disabled={pending}
         aria-label="Confirmar"
         title={state?.error ?? "Confirmar así"}
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-accent-foreground disabled:opacity-50"
+        className="tap flex h-9 w-9 items-center justify-center rounded-full bg-accent text-accent-foreground disabled:opacity-50"
       >
         ✓
       </button>

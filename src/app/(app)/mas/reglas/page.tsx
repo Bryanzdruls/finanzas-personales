@@ -45,7 +45,7 @@ export default async function ReglasPage() {
       </p>
 
       <h2 className={sectionTitleClass}>Comercio → categoría</h2>
-      <ul className={`${cardClass} divide-y divide-border`}>
+      <ul className={`${cardClass} divide-y divide-border overflow-hidden`}>
         {rules.data.map((r) => (
           <li key={r.id} className="flex items-center gap-3 p-4">
             <span className="min-w-0 flex-1 truncate font-mono text-sm">{r.pattern}</span>
@@ -70,7 +70,7 @@ export default async function ReglasPage() {
       </div>
 
       <h2 className={sectionTitleClass}>Tarjeta → cuenta</h2>
-      <ul className={`${cardClass} divide-y divide-border`}>
+      <ul className={`${cardClass} divide-y divide-border overflow-hidden`}>
         {cards.data.map((c) => (
           <li key={c.id} className="flex items-center gap-3 p-4">
             <span className="min-w-0 flex-1 truncate">💳 {c.card_key}</span>

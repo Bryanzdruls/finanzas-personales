@@ -14,7 +14,8 @@ export function MonthPicker({
     const query = new URLSearchParams({ ...params, ...(mes ? { mes } : {}) }).toString();
     return query ? `${basePath}?${query}` : basePath;
   };
-  const link = "flex h-10 w-10 items-center justify-center rounded-full bg-surface text-xl";
+  const link =
+    "flex h-10 w-10 items-center justify-center rounded-full bg-surface text-xl hover:bg-border active:scale-95";
 
   return (
     <div className="flex items-center justify-between">

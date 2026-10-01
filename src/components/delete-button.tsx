@@ -50,7 +50,7 @@ export function DeleteButton({
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-xl px-4 py-3 font-semibold text-negative disabled:opacity-50"
+        className="row-link w-full rounded-xl px-4 py-3 font-semibold text-negative disabled:opacity-50"
       >
         {pending ? "Eliminando…" : label}
       </button>

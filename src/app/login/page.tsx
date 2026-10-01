@@ -89,7 +89,7 @@ function GoogleSignIn() {
         type="button"
         onClick={signIn}
         disabled={loading}
-        className="flex w-full items-center justify-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 font-semibold disabled:opacity-50"
+        className="row-link flex w-full items-center justify-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 font-semibold disabled:opacity-50"
       >
         <GoogleLogo />
         {loading ? "Abriendo Google…" : "Continuar con Google"}

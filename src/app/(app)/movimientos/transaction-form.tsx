@@ -93,7 +93,7 @@ export function TransactionForm({
               }
             }}
             className={`rounded-lg py-2 text-sm font-medium ${
-              type === option.value ? "bg-accent text-accent-foreground" : "text-muted"
+              type === option.value ? "bg-accent text-accent-foreground" : "text-muted hover:bg-background hover:text-foreground"
             }`}
           >
             {option.label}
@@ -210,7 +210,7 @@ export function TransactionForm({
                   defaultChecked={initial?.category_id === c.id}
                   className="peer sr-only"
                 />
-                <span className="inline-block rounded-full border border-border bg-surface px-3 py-1.5 text-sm peer-checked:border-accent peer-checked:bg-accent peer-checked:text-accent-foreground">
+                <span className="inline-block rounded-full border border-border bg-surface px-3 py-1.5 text-sm transition-colors hover:border-accent peer-checked:border-accent peer-checked:bg-accent peer-checked:text-accent-foreground">
                   {c.icon} {c.fullName}
                 </span>
               </label>

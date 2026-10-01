@@ -52,7 +52,7 @@ export function CreditCardList({ cards }: { cards: CreditCardBalance[] }) {
             {owed > 0 && (
               <Link
                 href={`/movimientos/nuevo?tipo=transfer&hacia=${c.account_id}`}
-                className="mt-3 block rounded-xl border border-accent py-2 text-center text-sm font-semibold text-accent"
+                className="row-link mt-3 block rounded-xl border border-accent py-2 text-center text-sm font-semibold text-accent"
               >
                 Pagar tarjeta
               </Link>

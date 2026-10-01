@@ -89,7 +89,7 @@ export default async function DeudasPage() {
           <ul className="flex flex-col gap-3">
             {active.map((d) => (
               <li key={d.id}>
-                <Link href={`/deudas/${d.id}`} className={`${cardClass} block p-4`}>
+                <Link href={`/deudas/${d.id}`} className={`${cardClass} row-link block p-4`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate font-medium">
@@ -125,10 +125,10 @@ export default async function DeudasPage() {
       {closed.length > 0 && (
         <>
           <h2 className={sectionTitleClass}>Cerradas</h2>
-          <ul className={`${cardClass} divide-y divide-border`}>
+          <ul className={`${cardClass} divide-y divide-border overflow-hidden`}>
             {closed.map((d) => (
               <li key={d.id}>
-                <Link href={`/deudas/${d.id}`} className="flex items-center justify-between gap-3 p-4">
+                <Link href={`/deudas/${d.id}`} className="row-link flex items-center justify-between gap-3 p-4">
                   <span className="truncate">
                     {d.category?.icon} {d.creditor}
                   </span>

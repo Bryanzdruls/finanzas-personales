@@ -36,7 +36,7 @@ export default async function CategoriasPage({ searchParams }: PageProps<"/mas/c
           <li key={c.id}>
             <Link
               href={`/mas/categorias/${c.id}`}
-              className={`flex items-center gap-3 p-4 ${c.parent_id ? "pl-10" : ""}`}
+              className={`row-link flex items-center gap-3 p-4 ${c.parent_id ? "pl-10" : ""}`}
             >
               <span aria-hidden className="w-7 text-center text-xl">
                 {c.icon ?? "•"}

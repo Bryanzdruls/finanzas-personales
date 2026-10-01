@@ -95,10 +95,10 @@ export default async function DeudaPage({ params }: PageProps<"/deudas/[id]">) {
       )}
 
       <h2 className={sectionTitleClass}>Abonos</h2>
-      <ul className={`${cardClass} divide-y divide-border`}>
+      <ul className={`${cardClass} divide-y divide-border overflow-hidden`}>
         {payments?.map((p) => (
           <li key={p.id}>
-            <Link href={`/movimientos/${p.id}`} className="flex items-center justify-between gap-3 p-4">
+            <Link href={`/movimientos/${p.id}`} className="row-link flex items-center justify-between gap-3 p-4">
               <div className="min-w-0">
                 <p className="capitalize">{formatDay(p.occurred_on)}</p>
                 <p className="truncate text-sm text-muted">

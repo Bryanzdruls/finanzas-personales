@@ -118,7 +118,7 @@ export function AndroidCapture({ accounts }: { accounts: Account[] }) {
             <button
               type="button"
               onClick={() => PaymentCapture.openListenerSettings()}
-              className="mt-2 rounded-xl border border-accent px-4 py-2 text-sm font-semibold text-accent"
+              className="row-link mt-2 rounded-xl border border-accent px-4 py-2 text-sm font-semibold text-accent"
             >
               Abrir Ajustes
             </button>
@@ -134,7 +134,7 @@ export function AndroidCapture({ accounts }: { accounts: Account[] }) {
             <button
               type="button"
               onClick={async () => setStatus(await PaymentCapture.requestResultNotifications())}
-              className="mt-2 rounded-xl border border-accent px-4 py-2 text-sm font-semibold text-accent"
+              className="row-link mt-2 rounded-xl border border-accent px-4 py-2 text-sm font-semibold text-accent"
             >
               Permitir avisos
             </button>

@@ -73,10 +73,10 @@ function AccountList({ title, accounts }: { title: string; accounts: Balance[] }
   return (
     <>
       <h2 className={sectionTitleClass}>{title}</h2>
-      <ul className={`${cardClass} divide-y divide-border`}>
+      <ul className={`${cardClass} divide-y divide-border overflow-hidden`}>
         {accounts.map((a) => (
           <li key={a.account_id}>
-            <Link href={`/cuentas/${a.account_id}`} className="flex items-center justify-between gap-3 p-4">
+            <Link href={`/cuentas/${a.account_id}`} className="row-link flex items-center justify-between gap-3 p-4">
               <div className="min-w-0">
                 <p className="truncate font-medium">{a.name}</p>
                 <p className="text-sm text-muted">

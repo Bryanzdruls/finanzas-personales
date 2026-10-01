@@ -73,7 +73,7 @@ export default async function CuentaPage({ params }: PageProps<"/cuentas/[id]">)
             {card && owed > 0 && (
               <Link
                 href={`/movimientos/nuevo?tipo=transfer&hacia=${id}`}
-                className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+                className="tap rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
               >
                 Pagar tarjeta
               </Link>
@@ -107,7 +107,7 @@ export default async function CuentaPage({ params }: PageProps<"/cuentas/[id]">)
       {snapshots && snapshots.length > 0 && (
         <>
           <h2 className={sectionTitleClass}>Historial</h2>
-          <ul className={`${cardClass} divide-y divide-border`}>
+          <ul className={`${cardClass} divide-y divide-border overflow-hidden`}>
             {snapshots.map((s) => (
               <li key={s.id} className="flex items-center justify-between gap-3 p-4">
                 <span className="capitalize text-muted">{formatDay(s.as_of)}</span>

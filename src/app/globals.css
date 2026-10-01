@@ -52,3 +52,63 @@ body {
   color: var(--foreground);
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Interacción: en web todo lo que se puede tocar muestra la mano, responde al pasar el mouse y al
+   presionar. El hover solo aplica en dispositivos con mouse para que no quede "pegado" en el iPhone. */
+@layer base {
+  a,
+  button:not(:disabled),
+  select,
+  summary,
+  label:has(input[type="checkbox"], input[type="radio"]) {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  a,
+  button {
+    transition:
+      background-color 150ms,
+      color 150ms,
+      opacity 150ms,
+      filter 150ms,
+      transform 100ms;
+  }
+  @media (hover: hover) {
+    a.text-accent:hover {
+      opacity: 0.75;
+    }
+  }
+}
+
+/* Fila de una lista que abre algo (cuenta, movimiento, menú). */
+@utility row-link {
+  &:active {
+    background-color: color-mix(in srgb, var(--foreground) 10%, transparent);
+  }
+  @media (hover: hover) {
+    &:hover {
+      background-color: color-mix(in srgb, var(--foreground) 6%, transparent);
+    }
+  }
+}
+
+/* Botón o bloque con fondo propio (acento, tarjeta). */
+@utility tap {
+  &:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      filter: brightness(1.08);
+    }
+  }
+}
+
+/* Carga: bloque gris que late mientras llega la página. */
+@utility skeleton {
+  border-radius: 0.75rem;
+  background-color: color-mix(in srgb, var(--foreground) 7%, transparent);
+  animation: pulse 1.4s ease-in-out infinite;
+}

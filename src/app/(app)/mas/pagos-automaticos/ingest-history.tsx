@@ -40,7 +40,7 @@ export async function IngestHistory() {
           Aún no ha llegado nada. Ejecuta el Atajo o haz un pago para verlo aquí.
         </p>
       ) : (
-        <ul className={`${cardClass} divide-y divide-border`}>
+        <ul className={`${cardClass} divide-y divide-border overflow-hidden`}>
           {data.map((e) => {
             const ok = e.status === 200;
             return (

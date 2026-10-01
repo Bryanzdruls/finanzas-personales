@@ -13,7 +13,7 @@ export async function ReviewBanner() {
   return (
     <Link
       href="/movimientos/revisar"
-      className="mb-4 flex items-center justify-between rounded-2xl bg-accent px-4 py-3 text-accent-foreground"
+      className="tap mb-4 flex items-center justify-between rounded-2xl bg-accent px-4 py-3 text-accent-foreground"
     >
       <span className="font-medium">
         {count} {count === 1 ? "pago por revisar" : "pagos por revisar"}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { AddButton } from "@/components/add-button";
 import { MonthPicker } from "@/components/month-picker";
 import { PageHeader } from "@/components/page-header";
@@ -95,7 +96,9 @@ export default async function MovimientosPage({ searchParams }: PageProps<"/movi
           </Link>
         }
       />
-      <ReviewBanner />
+      <Suspense>
+        <ReviewBanner />
+      </Suspense>
       <MonthPicker
         month={month}
         basePath="/movimientos"
@@ -105,7 +108,7 @@ export default async function MovimientosPage({ searchParams }: PageProps<"/movi
       {account && (
         <Link
           href={`/movimientos?mes=${month.key}`}
-          className="mt-4 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1 text-sm text-accent-foreground"
+          className="tap mt-4 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1 text-sm text-accent-foreground"
         >
           Solo {account.name} <span aria-label="Quitar filtro">×</span>
         </Link>
@@ -122,10 +125,10 @@ export default async function MovimientosPage({ searchParams }: PageProps<"/movi
           <h2 className="mt-6 mb-2 px-1 text-sm font-medium capitalize text-muted">
             {formatDay(day)}
           </h2>
-          <ul className={`${cardClass} divide-y divide-border`}>
+          <ul className={`${cardClass} divide-y divide-border overflow-hidden`}>
             {rows.map((t) => (
               <li key={t.id}>
-                <Link href={`/movimientos/${t.id}`} className="flex items-center gap-3 p-4">
+                <Link href={`/movimientos/${t.id}`} className="row-link flex items-center gap-3 p-4">
                   <span aria-hidden className="text-2xl">
                     {icon(t)}
                   </span>

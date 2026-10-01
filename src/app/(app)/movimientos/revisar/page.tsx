@@ -64,9 +64,9 @@ export default async function RevisarPage() {
               confirmMessage={`¿Fusionar los ${matches.size} posibles duplicados? Se conserva el movimiento original de cada pareja y se borra el repetido.`}
             />
           )}
-          <ul className={`${cardClass} divide-y divide-border`}>
+          <ul className={`${cardClass} divide-y divide-border overflow-hidden`}>
             {data.map((t) => (
-              <li key={t.id} className="flex items-center gap-3 p-4">
+              <li key={t.id} className="row-link flex items-center gap-3 p-4">
                 <Link href={`/movimientos/${t.id}`} className="flex min-w-0 flex-1 items-center gap-3">
                   <span aria-hidden className="text-2xl">
                     {t.type === "transfer" ? "🔄" : (t.category?.icon ?? "❔")}

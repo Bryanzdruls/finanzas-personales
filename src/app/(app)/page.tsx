@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { AddButton } from "@/components/add-button";
 import { cardDebt, CreditCardList } from "@/components/credit-card-list";
 import { MonthPicker } from "@/components/month-picker";
@@ -81,7 +82,9 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   return (
     <>
       <h1 className="mb-4 text-3xl font-bold">Inicio</h1>
-      <ReviewBanner />
+      <Suspense>
+        <ReviewBanner />
+      </Suspense>
       <MonthPicker month={month} basePath="/" />
 
       <section className="mt-4 grid gap-3">
@@ -151,9 +154,9 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
       {investments.length > 0 && (
         <>
           <h2 className={sectionTitleClass}>Inversiones</h2>
-          <ul className={`${cardClass} divide-y divide-border`}>
+          <ul className={`${cardClass} divide-y divide-border overflow-hidden`}>
             {investments.map((a) => (
-              <li key={a.account_id} className="flex items-center gap-3 p-4">
+              <li key={a.account_id} className="row-link flex items-center gap-3 p-4">
                 <Link href={`/cuentas/${a.account_id}`} className="min-w-0 flex-1">
                   <p className="truncate font-medium">{a.name}</p>
                   <p className="text-xs text-muted">
@@ -173,10 +176,10 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
       )}
 
       <h2 className={sectionTitleClass}>Cuentas</h2>
-      <ul className={`${cardClass} divide-y divide-border`}>
+      <ul className={`${cardClass} divide-y divide-border overflow-hidden`}>
         {liquid.map((account) => (
           <li key={account.account_id}>
-            <Link href={`/cuentas/${account.account_id}`} className="flex items-center justify-between p-4">
+            <Link href={`/cuentas/${account.account_id}`} className="row-link flex items-center justify-between p-4">
               <div>
                 <p className="font-medium">{account.name}</p>
                 <p className="text-sm text-muted">{accountTypeLabels[account.type]}</p>

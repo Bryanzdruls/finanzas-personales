@@ -58,7 +58,7 @@ export function ImportForm({ accounts }: { accounts: Account[] }) {
       </div>
 
       {rows.length > 0 && (
-        <ul className={`${cardClass} divide-y divide-border`}>
+        <ul className={`${cardClass} divide-y divide-border overflow-hidden`}>
           {rows.map((r, i) => {
             const m = r.movement;
             if (!m) {
