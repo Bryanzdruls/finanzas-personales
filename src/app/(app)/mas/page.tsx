@@ -8,6 +8,7 @@ const menu = [
   { href: "/reportes", icon: "📊", label: "Reportes y exportar" },
   { href: "/mas/categorias", icon: "🏷️", label: "Categorías" },
   { href: "/movimientos/revisar", icon: "📥", label: "Pagos por revisar" },
+  { href: "/movimientos/importar", icon: "📋", label: "Importar SMS de Bancolombia" },
   { href: "/mas/pagos-automaticos", icon: "💳", label: "Pagos automáticos" },
   { href: "/mas/reglas", icon: "🧠", label: "Reglas de clasificación" },
 ];

@@ -1,8 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
-import { ENABLED_KINDS, parseBancolombiaMessage } from "@/lib/bancolombia";
+import { movementParams, parseBancolombiaMessage } from "@/lib/bancolombia";
 import { formatMoney, parseWalletAmount } from "@/lib/format";
 import { supabaseKey, supabaseUrl } from "@/lib/supabase/env";
+import { getTrm } from "@/lib/trm";
 import { parseGoogleWalletNotification, type ParsedPayment } from "@/lib/wallet-notification";
 
 // Recibe pagos automáticos. Autenticación: `Authorization: Bearer fp_...` (token personal).
@@ -86,26 +87,18 @@ function describe(value: unknown) {
 }
 
 // SMS (Atajo "Mensaje") o correo (Gmail + Apps Script) de alertas de Bancolombia:
-//   { "source": "bancolombia", "channel": "sms" | "email", "text": "Bancolombia: Transferiste ..." }
+//   { "source": "bancolombia", "channel": "sms" | "email" | "sync", "text": "Bancolombia: Transferiste ..." }
 async function ingestBancolombia(token: string, body: Record<string, unknown>): Promise<Result> {
   const text = typeof body.text === "string" ? body.text.slice(0, 4000) : "";
   const movement = parseBancolombiaMessage(text);
-  if (!movement || movement.kind === "unknown") {
-    console.warn("ingest: mensaje de Bancolombia no reconocido", body.channel, text.slice(0, 500));
-    return { status: 422, message: "No se reconoció el mensaje de Bancolombia." };
-  }
-  if (!ENABLED_KINDS.includes(movement.kind)) {
-    return { status: 200, message: `Ignorado (${movement.description.toLowerCase()})` };
-  }
+  // Claves, avisos o publicidad: no son movimientos y no se registran (no es un error).
+  if (!movement) return { status: 200, message: "Sin movimiento: el mensaje no es una transacción." };
 
+  // La TRM solo hace falta si el destino resulta ser una cuenta en otra moneda (p. ej. Wenia).
+  const fxRate = movement.direction === "out" ? await getTrm() : null;
   const { data, error } = await anonClient().rpc("ingest_bank_movement", {
     p_token: token,
-    p_type: movement.kind === "income" ? "income" : "expense",
-    p_amount: movement.amount,
-    p_counterparty: movement.counterparty,
-    p_description: movement.description,
-    p_card_key: movement.cardKey,
-    p_occurred_on: movement.date,
+    ...movementParams(movement, fxRate),
   });
 
   if (error) {

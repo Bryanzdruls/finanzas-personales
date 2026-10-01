@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/page-header";
 import { cardClass } from "@/components/ui";
 import { today } from "@/lib/dates";
 import { getAccounts, getCategories, getDebtOptions } from "@/lib/queries";
+import { getTrm } from "@/lib/trm";
 import { createClient } from "@/lib/supabase/server";
 import { sourceLabels, type Transaction } from "@/lib/types";
 import { deleteTransaction, saveTransaction } from "../actions";
@@ -15,16 +16,17 @@ export default async function EditarMovimientoPage({ params }: PageProps<"/movim
   const { data: transaction } = await supabase
     .from("transactions")
     .select(
-      "id, occurred_on, amount, type, account_id, to_account_id, category_id, debt_id, description, merchant, card_name, source, needs_review",
+      "id, occurred_on, amount, type, account_id, to_account_id, to_amount, category_id, debt_id, description, merchant, card_name, source, needs_review",
     )
     .eq("id", id)
     .maybeSingle<Transaction>();
   if (!transaction) notFound();
 
-  const [accounts, categories, debts] = await Promise.all([
+  const [accounts, categories, debts, trm] = await Promise.all([
     getAccounts({ includeArchived: true }),
     getCategories(),
     getDebtOptions(transaction.debt_id),
+    getTrm(),
   ]);
 
   return (
@@ -51,6 +53,7 @@ export default async function EditarMovimientoPage({ params }: PageProps<"/movim
         categories={categories}
         debts={debts}
         initial={transaction}
+        trm={trm}
         today={today()}
       />
       <DeleteButton

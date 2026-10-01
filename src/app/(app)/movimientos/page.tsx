@@ -87,7 +87,14 @@ export default async function MovimientosPage({ searchParams }: PageProps<"/movi
 
   return (
     <>
-      <PageHeader title="Movimientos" />
+      <PageHeader
+        title="Movimientos"
+        action={
+          <Link href="/movimientos/importar" className="text-sm text-accent">
+            Importar SMS
+          </Link>
+        }
+      />
       <ReviewBanner />
       <MonthPicker
         month={month}

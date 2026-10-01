@@ -68,6 +68,7 @@ export type Transaction = {
   type: TransactionType;
   account_id: string;
   to_account_id: string | null;
+  to_amount: string | null;
   category_id: string | null;
   debt_id: string | null;
   description: string | null;

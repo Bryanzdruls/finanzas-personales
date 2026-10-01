@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/page-header";
 import { today } from "@/lib/dates";
 import { getAccounts, getCategories, getDebtOptions } from "@/lib/queries";
+import { getTrm } from "@/lib/trm";
 import type { TransactionType } from "@/lib/types";
 import { saveTransaction } from "../actions";
 import { TransactionForm } from "../transaction-form";
@@ -9,10 +10,11 @@ const types: TransactionType[] = ["expense", "income", "transfer", "debt_payment
 
 export default async function NuevoMovimientoPage({ searchParams }: PageProps<"/movimientos/nuevo">) {
   const { tipo, deuda, hacia } = await searchParams;
-  const [accounts, categories, debts] = await Promise.all([
+  const [accounts, categories, debts, trm] = await Promise.all([
     getAccounts(),
     getCategories(),
     getDebtOptions(),
+    getTrm(),
   ]);
   const defaultType = types.includes(tipo as TransactionType) ? (tipo as TransactionType) : "expense";
   const defaultDebtId = debts.find((d) => d.debt_id === deuda)?.debt_id;
@@ -43,6 +45,7 @@ export default async function NuevoMovimientoPage({ searchParams }: PageProps<"/
         defaultDebtId={defaultDebtId}
         defaultAccountId={source?.id}
         defaultToAccountId={target?.id}
+        trm={trm}
         today={today()}
       />
     </>

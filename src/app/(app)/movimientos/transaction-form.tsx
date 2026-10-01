@@ -33,6 +33,7 @@ export function TransactionForm({
   defaultDebtId,
   defaultAccountId,
   defaultToAccountId,
+  trm,
   today,
 }: {
   action: (prev: FormState, formData: FormData) => Promise<FormState>;
@@ -44,6 +45,8 @@ export function TransactionForm({
   defaultDebtId?: string;
   defaultAccountId?: string;
   defaultToAccountId?: string;
+  /** Pesos por dólar hoy, como referencia para transferencias entre monedas. */
+  trm?: number | null;
   today: string;
 }) {
   const [state, formAction] = useActionState(action, undefined);
@@ -56,6 +59,9 @@ export function TransactionForm({
       firstAccountIn(accounts, type === "debt_payment" ? debt?.currency : undefined),
   );
   const currency = accounts.find((a) => a.id === accountId)?.currency ?? "COP";
+  const [toAccountId, setToAccountId] = useState(initial?.to_account_id ?? defaultToAccountId ?? "");
+  const toCurrency = accounts.find((a) => a.id === toAccountId)?.currency;
+  const crossCurrency = type === "transfer" && toCurrency !== undefined && toCurrency !== currency;
   const visibleCategories = withFullNames(categories.filter((c) => c.kind === type));
   // "Abono" solo aparece si hay deudas a las que abonar.
   const options = typeOptions.filter((o) => o.value !== "debt_payment" || debts.length > 0);
@@ -159,7 +165,8 @@ export function TransactionForm({
           <select
             id="to_account_id"
             name="to_account_id"
-            defaultValue={initial?.to_account_id ?? defaultToAccountId ?? ""}
+            value={toAccountId}
+            onChange={(e) => setToAccountId(e.target.value)}
             required
             className={inputClass}
           >
@@ -174,6 +181,21 @@ export function TransactionForm({
                 </option>
               ))}
           </select>
+          {crossCurrency && (
+            <div className="mt-4">
+              <label className={labelClass}>Monto recibido en {toAccountName(accounts, toAccountId)}</label>
+              <MoneyInput
+                key={`to-${toCurrency}`}
+                name="to_amount"
+                currency={toCurrency}
+                defaultValue={initial?.to_amount ?? undefined}
+              />
+              <p className="mt-1 px-1 text-xs text-muted">
+                La cuenta destino es en {toCurrency}. Escribe lo que realmente llegó
+                {trm ? ` (TRM de hoy: ${formatMoney(trm, "COP")} por dólar)` : ""}.
+              </p>
+            </div>
+          )}
         </div>
       ) : type === "debt_payment" ? null : (
         <fieldset>
@@ -229,6 +251,10 @@ export function TransactionForm({
       <SubmitButton>{initial ? "Guardar cambios" : "Registrar"}</SubmitButton>
     </form>
   );
+}
+
+function toAccountName(accounts: Account[], id: string) {
+  return accounts.find((a) => a.id === id)?.name ?? "la cuenta destino";
 }
 
 function firstAccountIn(accounts: Account[], currency?: string) {
