@@ -48,6 +48,8 @@ export function formatDay(isoDate: string) {
     weekday: "long",
     day: "numeric",
     month: "short",
+    // En resultados de búsqueda pueden salir días de otros años.
+    year: String(y) === today().slice(0, 4) ? undefined : "numeric",
     timeZone: "UTC",
   }).format(new Date(Date.UTC(y, m - 1, d)));
 }

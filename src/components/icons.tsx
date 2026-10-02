@@ -17,6 +17,8 @@ const paths = {
   settings: "M4 7h10m4 0h2M4 17h4m4 0h8M14 5v4m-6 6v4",
   logout: "M14 4h5v16h-5M10 8l-4 4 4 4m-4-4h11",
   plus: "M12 5v14M5 12h14",
+  search: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm9 16-4-4",
+  close: "M6 6l12 12M18 6 6 18",
   chevronRight: "m9 5 7 7-7 7",
   chevronLeft: "m15 5-7 7 7 7",
 } as const;

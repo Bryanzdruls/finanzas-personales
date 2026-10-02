@@ -1,12 +1,15 @@
+import Form from "next/form";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AddButton } from "@/components/add-button";
+import { Icon } from "@/components/icons";
 import { MonthPicker } from "@/components/month-picker";
 import { PageHeader } from "@/components/page-header";
 import { ReviewBanner } from "@/components/review-banner";
-import { cardClass } from "@/components/ui";
+import { cardClass, inputClass } from "@/components/ui";
 import { formatDay, parseMonth } from "@/lib/dates";
 import { formatMoney, type Currency } from "@/lib/format";
+import { parseSearch } from "@/lib/search";
 import { createClient } from "@/lib/supabase/server";
 import { transactionTypeLabels, type TransactionType } from "@/lib/types";
 
@@ -23,6 +26,8 @@ type Row = {
   category: { name: string; icon: string | null } | null;
   debt: { creditor: string } | null;
 };
+
+const SEARCH_LIMIT = 100;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -55,8 +60,9 @@ function icon(t: Row) {
 }
 
 export default async function MovimientosPage({ searchParams }: PageProps<"/movimientos">) {
-  const { mes, cuenta } = await searchParams;
+  const { mes, cuenta, q } = await searchParams;
   const month = parseMonth(mes);
+  const search = parseSearch(q);
   const accountId = typeof cuenta === "string" && UUID.test(cuenta) ? cuenta : null;
   const supabase = await createClient();
 
@@ -68,9 +74,25 @@ export default async function MovimientosPage({ searchParams }: PageProps<"/movi
        to_account:accounts!transactions_to_account_id_user_id_fkey(name),
        category:categories(name, icon),
        debt:debts(creditor)`,
-    )
-    .gte("occurred_on", month.start)
-    .lt("occurred_on", month.end);
+    );
+  if (search) {
+    // Busca en todo el historial: por monto exacto, o por descripción, comercio o categoría.
+    if (search.amount !== null) {
+      query = query.eq("amount", search.amount);
+    } else {
+      const pattern = `%${search.text}%`;
+      const { data: categories } = await supabase.from("categories").select("id").ilike("name", pattern);
+      const ids = (categories ?? []).map((c) => c.id);
+      query = query.or(
+        [`description.ilike.${pattern}`, `merchant.ilike.${pattern}`, ids.length ? `category_id.in.(${ids})` : null]
+          .filter(Boolean)
+          .join(","),
+      );
+    }
+    query = query.limit(SEARCH_LIMIT);
+  } else {
+    query = query.gte("occurred_on", month.start).lt("occurred_on", month.end);
+  }
   if (accountId) query = query.or(`account_id.eq.${accountId},to_account_id.eq.${accountId}`);
 
   const [{ data, error }, { data: account }] = await Promise.all([
@@ -99,15 +121,45 @@ export default async function MovimientosPage({ searchParams }: PageProps<"/movi
       <Suspense>
         <ReviewBanner />
       </Suspense>
-      <MonthPicker
-        month={month}
-        basePath="/movimientos"
-        params={accountId ? { cuenta: accountId } : {}}
-      />
+      <Form action="/movimientos" className="relative mb-4">
+        {accountId && <input type="hidden" name="cuenta" value={accountId} />}
+        <Icon name="search" className="pointer-events-none absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-muted" />
+        <input
+          type="search"
+          name="q"
+          defaultValue={typeof q === "string" ? q : ""}
+          placeholder="Buscar por descripción, categoría o monto"
+          aria-label="Buscar movimientos"
+          enterKeyHint="search"
+          className={`${inputClass} pl-11`}
+        />
+      </Form>
+
+      {search ? (
+        <div className="flex items-center justify-between px-1">
+          <p className="text-sm text-muted">
+            {data.length === SEARCH_LIMIT ? `Los ${SEARCH_LIMIT} más recientes` : `${data.length} resultado${data.length === 1 ? "" : "s"}`}{" "}
+            en todo el historial
+          </p>
+          <Link
+            href={accountId ? `/movimientos?cuenta=${accountId}` : "/movimientos"}
+            className="inline-flex items-center gap-1 text-sm font-medium text-accent"
+          >
+            <Icon name="close" className="h-4 w-4" />
+            Limpiar
+          </Link>
+        </div>
+      ) : (
+        <MonthPicker
+          month={month}
+          basePath="/movimientos"
+          params={accountId ? { cuenta: accountId } : {}}
+        />
+      )}
 
       {account && (
         <Link
-          href={`/movimientos?mes=${month.key}`}
+          href={search ? `/movimientos?q=${encodeURIComponent(String(q))}` : `/movimientos?mes=${month.key}`}
           className="tap mt-4 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1 text-sm text-accent-foreground"
         >
           Solo {account.name} <span aria-label="Quitar filtro">×</span>
@@ -116,7 +168,7 @@ export default async function MovimientosPage({ searchParams }: PageProps<"/movi
 
       {data.length === 0 && (
         <p className={`${cardClass} mt-6 p-6 text-center text-muted`}>
-          No hay movimientos este mes. Toca + para registrar uno.
+          {search ? "No encontramos movimientos con eso." : "No hay movimientos este mes. Toca + para registrar uno."}
         </p>
       )}
 
