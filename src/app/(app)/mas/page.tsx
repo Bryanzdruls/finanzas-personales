@@ -7,6 +7,7 @@ import { signOut } from "../actions";
 
 const menu: { href: string; icon: IconName; label: string }[] = [
   { href: "/reportes", icon: "chart", label: "Reportes y exportar" },
+  { href: "/mas/configuracion", icon: "settings", label: "Configuración" },
   { href: "/mas/categorias", icon: "tag", label: "Categorías" },
   { href: "/movimientos/revisar", icon: "inbox", label: "Pagos por revisar" },
   { href: "/movimientos/importar", icon: "clipboard", label: "Importar SMS de Bancolombia" },

@@ -6,6 +6,7 @@ import { ProgressBar } from "@/components/progress-bar";
 import { cardClass, sectionTitleClass } from "@/components/ui";
 import { formatShortDate, nextDueDate } from "@/lib/dates";
 import { formatMoney, type Currency } from "@/lib/format";
+import { getProfile, hasModule } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
 import { debtStatusLabels, type DebtStatus } from "@/lib/types";
 
@@ -53,6 +54,8 @@ export default async function DeudasPage() {
   for (const d of active) pending.set(d.currency, (pending.get(d.currency) ?? 0) + Number(d.remaining));
   for (const c of cards.data) pending.set(c.currency, (pending.get(c.currency) ?? 0) + cardDebt(c));
 
+  const showCards = hasModule(await getProfile(), "credit_cards");
+
   return (
     <>
       <PageHeader title="Deudas" />
@@ -70,14 +73,14 @@ export default async function DeudasPage() {
         </div>
       )}
 
-      {cards.data.length > 0 && (
+      {showCards && cards.data.length > 0 && (
         <>
           <h2 className={sectionTitleClass}>Tarjetas de crédito</h2>
           <CreditCardList cards={cards.data} />
         </>
       )}
 
-      {rows.length === 0 && cards.data.length === 0 && (
+      {rows.length === 0 && (!showCards || cards.data.length === 0) && (
         <p className={`${cardClass} p-6 text-center text-muted`}>
           No tienes deudas registradas. Toca + para agregar una.
         </p>

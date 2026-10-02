@@ -8,6 +8,7 @@ import { ReviewBanner } from "@/components/review-banner";
 import { cardClass, sectionTitleClass } from "@/components/ui";
 import { formatShortDate, parseMonth } from "@/lib/dates";
 import { formatMoney, type Currency } from "@/lib/format";
+import { getProfile, hasModule } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
 import { accountTypeLabels, isCreditCard, isInvestment, type AccountType } from "@/lib/types";
 
@@ -42,7 +43,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const month = parseMonth((await searchParams).mes);
   const supabase = await createClient();
 
-  const [summary, expenses, netWorth, balances, claims] = await Promise.all([
+  const [summary, expenses, netWorth, balances, claims, profile] = await Promise.all([
     supabase
       .from("monthly_summary")
       .select("currency, income, expenses, debt_payments, net")
@@ -66,6 +67,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
       .order("name")
       .returns<Balance[]>(),
     supabase.auth.getClaims(),
+    getProfile(),
   ]);
 
   if (summary.error) throw new Error(summary.error.message);
@@ -73,6 +75,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   if (netWorth.error) throw new Error(netWorth.error.message);
   if (balances.error) throw new Error(balances.error.message);
 
+  const showInvestments = hasModule(profile, "investments");
   const investments = balances.data.filter((a) => isInvestment(a.type));
   const cards = balances.data.filter((a) => isCreditCard(a.type));
   const liquid = balances.data.filter((a) => !isInvestment(a.type) && !isCreditCard(a.type));
@@ -86,7 +89,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
       <header className="mb-6 flex items-center gap-3">
         <LogoMark className="h-11 w-11" />
         <div className="min-w-0">
-          <h1 className="truncate text-2xl font-bold tracking-tight">{greeting(claims.data?.claims)}</h1>
+          <h1 className="truncate text-2xl font-bold tracking-tight">{greeting(profile?.display_name, claims.data?.claims)}</h1>
           <p className="text-sm text-muted first-letter:uppercase">{todayLabel()}</p>
         </div>
       </header>
@@ -145,9 +148,9 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
                   {formatMoney(row.net_worth, currency)}
                 </span>
               </div>
-              <dl className="mt-3 grid grid-cols-3 gap-2 text-xs">
+              <dl className={`mt-3 grid gap-2 text-xs ${showInvestments ? "grid-cols-3" : "grid-cols-2"}`}>
                 <Stat label="Disponible" value={formatMoney(available, currency)} />
-                <Stat label="Invertido" value={formatMoney(invested, currency)} />
+                {showInvestments && <Stat label="Invertido" value={formatMoney(invested, currency)} />}
                 <Stat
                   label="Deudas"
                   value={formatMoney(liabilities, currency)}
@@ -159,14 +162,14 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         })}
       </div>
 
-      {cards.length > 0 && (
+      {hasModule(profile, "credit_cards") && cards.length > 0 && (
         <>
           <h2 className={sectionTitleClass}>Tarjetas de crédito</h2>
           <CreditCardList cards={cards} />
         </>
       )}
 
-      {investments.length > 0 && (
+      {showInvestments && investments.length > 0 && (
         <>
           <h2 className={sectionTitleClass}>Inversiones</h2>
           <ul className={`${cardClass} divide-y divide-border overflow-hidden`}>
@@ -282,8 +285,11 @@ function CategoryBreakdown({ expenses, monthKey }: { expenses: Expense[]; monthK
   );
 }
 
-function greeting(claims: { user_metadata?: { full_name?: string; name?: string } } | undefined) {
-  const name = (claims?.user_metadata?.full_name ?? claims?.user_metadata?.name ?? "").split(" ")[0];
+function greeting(
+  displayName: string | null | undefined,
+  claims: { user_metadata?: { full_name?: string; name?: string } } | undefined,
+) {
+  const name = (displayName || claims?.user_metadata?.full_name || claims?.user_metadata?.name || "").split(" ")[0];
   return name ? `Hola, ${name}` : "Hola";
 }
 

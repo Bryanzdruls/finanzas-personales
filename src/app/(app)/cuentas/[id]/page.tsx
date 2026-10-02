@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { cardClass, sectionTitleClass } from "@/components/ui";
 import { formatDay, formatShortDate, nextDueDate, today } from "@/lib/dates";
 import { formatMoney } from "@/lib/format";
+import { getProfile } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
 import { isCreditCard, isInvestment, type Account } from "@/lib/types";
 import { deleteAccount, deleteSnapshot, saveAccount, saveSnapshot } from "../actions";
@@ -127,7 +128,7 @@ export default async function CuentaPage({ params }: PageProps<"/cuentas/[id]">)
       )}
 
       <h2 className={sectionTitleClass}>Datos de la cuenta</h2>
-      <AccountForm action={saveAccount.bind(null, id)} initial={account} />
+      <AccountForm action={saveAccount.bind(null, id)} initial={account} modules={(await getProfile())?.modules ?? []} />
       <DeleteButton
         action={deleteAccount.bind(null, id)}
         confirmMessage={`¿Eliminar la cuenta ${account.name}? No se puede deshacer.`}

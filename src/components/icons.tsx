@@ -14,6 +14,7 @@ const paths = {
   clipboard: "M9 4h6v3H9V4Zm-3 1H5v16h14V5h-1M8.5 12h7m-7 4h4",
   card: "M3 6h18v12H3V6Zm0 4h18M7 15h3",
   rules: "M12 3v3m0 12v3M3 12h3m12 0h3M6 6l2 2m8 8 2 2M6 18l2-2m8-8 2-2M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z",
+  settings: "M4 7h10m4 0h2M4 17h4m4 0h8M14 5v4m-6 6v4",
   logout: "M14 4h5v16h-5M10 8l-4 4 4 4m-4-4h11",
   plus: "M12 5v14M5 12h14",
   chevronRight: "m9 5 7 7-7 7",
